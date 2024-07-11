@@ -3821,6 +3821,7 @@ axs[2].set_title('Distribution Counts')
 for bar, pos in zip(bars, window_positions_pred):
     height = bar.get_height()
 plt.tight_layout()
+plt.savefig('theo_ratios.png')
 plt.show()
 
 import numpy as np
