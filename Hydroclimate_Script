@@ -4288,25 +4288,37 @@ for file in csv_files:
 # Create a figure with subplots for each parameter
 fig, axs = plt.subplots(1, 3, figsize=(18, 6))  # Change to 1 row and 3 columns
 
+# Function to determine line style based on filename
+def get_line_style(file):
+    if 'RCP4.5' in file:
+        return '-'
+    elif 'RCP8.5' in file:
+        return '--'
+    else:
+        return '-.'
+
 # Plot location parameters
-for window_size, loc_params in zip(window_sizes, loc_params_all):
-    axs[0].plot(loc_params, label=f'Window {window_size}')
+for file, window_size, loc_params in zip(csv_files, window_sizes, loc_params_all):
+    line_style = get_line_style(file)
+    axs[0].plot(loc_params, line_style, label=f'Window {window_size}')
 axs[0].set_title('GEV Location Parameter')
 axs[0].set_xlabel('Time Window')
 axs[0].set_ylabel('Location')
 axs[0].legend()
 
 # Plot scale parameters
-for window_size, scale_params in zip(window_sizes, scale_params_all):
-    axs[1].plot(scale_params, label=f'Window {window_size}')
+for file, window_size, scale_params in zip(csv_files, window_sizes, scale_params_all):
+    line_style = get_line_style(file)
+    axs[1].plot(scale_params, line_style, label=f'Window {window_size}')
 axs[1].set_title('GEV Scale Parameter')
 axs[1].set_xlabel('Time Window')
 axs[1].set_ylabel('Scale')
 axs[1].legend()
 
 # Plot shape parameters
-for window_size, shape_params in zip(window_sizes, shape_params_all):
-    axs[2].plot(shape_params, label=f'Window {window_size}')
+for file, window_size, shape_params in zip(csv_files, window_sizes, shape_params_all):
+    line_style = get_line_style(file)
+    axs[2].plot(shape_params, line_style, label=f'Window {window_size}')
 axs[2].set_title('GEV Shape Parameter')
 axs[2].set_xlabel('Time Window')
 axs[2].set_ylabel('Shape')
@@ -4320,6 +4332,7 @@ plt.savefig('sensitivity.png')
 
 # Show the plot
 plt.show()
+
 
 
 # In[67]:
