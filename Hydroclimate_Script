@@ -4784,3 +4784,39 @@ generate_and_plot_pe3_time_series(loc_array, scale_array, shape_array, num_simul
 
 # Generate and plot PE3 distributions
 plot_pe3_distributions(loc_array, scale_array, shape_array, num_simulations, total_usage)
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+
+# Data from the image
+data = {
+    "Window Size": [25, 30, 35, 40, 45],
+    "tau2 R^2": [0.550, 0.643, 0.730, 0.840, 0.864],
+    "tau3 R^2": [0.863, 0.915, 0.910, 0.895, 0.744],
+    "L-moment 1 MSE (Training)": [0.0664, 0.0073, 0.0588, 0.0196, 0.2837],
+    "L-moment 2 MSE (Training)": [0.0204, 0.004, 0.0081, 0.0081, 0.025],
+    "L-moment 3 MSE (Training)": [0.0093, 0.0012, 0.0041, 0.007, 0.0503],
+    "L-moment 4 MSE (Training)": [0.0054, 0.0006, 0.0025, 0.0048, 0.0368]
+}
+
+df = pd.DataFrame(data)
+
+# Standardize the MSE columns
+scaler = StandardScaler()
+df[df.columns[3:]] = scaler.fit_transform(df[df.columns[3:]])
+
+# Plotting the data
+plt.figure(figsize=(10, 6))
+
+for column in df.columns[3:]:
+    plt.scatter(df["Window Size"], df[column], label=column, marker='o')
+
+plt.xticks(df["Window Size"])
+plt.xlabel('Window Size')
+plt.ylabel('Standardized MSE')
+plt.title('Standardized L-moments MSE vs Window Size')
+plt.legend()
+plt.grid(True)
+plt.show()
+
