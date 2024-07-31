@@ -11,7 +11,7 @@ nat_def = 0.0
 #total_useage = 5861313/((3*30)*86400) + 6158500/((365*86400)) + 33809/((365*86400)) + nat_def # Agriculture, Municipal, Water Bottling 
 total_usage = nat_def
 total_useage = nat_def
-window_size = 30
+window_size = 31
 selected_month = 9
 window_mean = 5 # e.g., 7-day low flow
 low_flow = "On" # Low of High Flow Events 
@@ -2243,7 +2243,7 @@ l_moment_3_obs = pd.Series(observed_tests[2])
 l_moment_4_obs = pd.Series(observed_tests[3])
 
 # Define the window size for the rolling mean
-window_size_mean = mean_smooething
+window_size_mean = 1  # Example window size, replace with the actual value
 
 # Apply rolling mean and convert back to numpy arrays
 l_moment_1_pred_rolled = l_moment_1_pred.rolling(window=window_size_mean, min_periods=1, center=True).mean().to_numpy()
@@ -2261,6 +2261,27 @@ mse_l_moment_1 = mean_squared_error(l_moment_1_obs_rolled, l_moment_1_pred_rolle
 mse_l_moment_2 = mean_squared_error(l_moment_2_obs_rolled, l_moment_2_pred_rolled)
 mse_l_moment_3 = mean_squared_error(l_moment_3_obs_rolled, l_moment_3_pred_rolled)
 mse_l_moment_4 = mean_squared_error(l_moment_4_obs_rolled, l_moment_4_pred_rolled)
+
+# Save observed and predicted L-moments to CSV
+observed_predicted_df = pd.DataFrame({
+    'L-moment 1 Observed': l_moment_1_obs_rolled,
+    'L-moment 1 Predicted': l_moment_1_pred_rolled,
+    'L-moment 2 Observed': l_moment_2_obs_rolled,
+    'L-moment 2 Predicted': l_moment_2_pred_rolled,
+    'L-moment 3 Observed': l_moment_3_obs_rolled,
+    'L-moment 3 Predicted': l_moment_3_pred_rolled,
+    'L-moment 4 Observed': l_moment_4_obs_rolled,
+    'L-moment 4 Predicted': l_moment_4_pred_rolled
+})
+
+# Load the GLO, GEV, GNO, PE3, and GPA parameters from CSV files
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+observed_predicted_df.to_csv(f'{desired_dir}/observed_predicted_l_moments.csv', index=False)
 
 # Plotting the results in a 2x2 grid layout
 plt.figure(figsize=(10, 10))
@@ -2295,6 +2316,32 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+
+import pandas as pd
+
+# Function to clean the CSV file
+def clean_csv(file_path):
+    # Load the CSV file
+    df = pd.read_csv(file_path)
+
+    # Remove leading apostrophes and strip leading/trailing spaces from all string columns
+    df = df.applymap(lambda x: str(x).lstrip("'").strip() if isinstance(x, str) else x)
+
+    # Convert all columns to numeric, coercing errors and filling NaNs if necessary
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col].astype(str).str.replace("'", ""), errors='coerce').fillna(0)
+
+    # Save the cleaned CSV file
+    df.to_csv(file_path, index=False)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+file_path = f'{desired_dir}/observed_predicted_l_moments.csv'
+
+# Clean the CSV file
+clean_csv(file_path)
+
+print(f"CSV file cleaned and saved to {file_path}")
 
 
 # In[41]:
@@ -2514,9 +2561,9 @@ from scipy.stats import genextreme as gev
 # Sample size for each set of GEV parameters
 sample_size = 100
 
-# Assuming you have your GEV parameters (loc, scale, shape) for observed and modeled data in arrays:
+# Assuming you have your GEV parameters (loc, scale, shape) for observed and modelled data in arrays:
 # e.g., smoothed_loc_obs, smoothed_scale_obs, smoothed_shape_obs for observed
-#       smoothed_loc_pred, smoothed_scale_pred, smoothed_shape_pred for modeled
+#       smoothed_loc_pred, smoothed_scale_pred, smoothed_shape_pred for modelled
 
 # Function to generate GEV distributed random data
 def generate_gev_data(loc, scale, shape, size):
@@ -2525,7 +2572,7 @@ def generate_gev_data(loc, scale, shape, size):
 # Generating random data for all windows
 observed_data = [generate_gev_data(loc, scale, shape, sample_size) 
                  for loc, scale, shape in zip(smoothed_loc_obs, smoothed_scale_obs, smoothed_shape_obs)]
-modeled_data = [generate_gev_data(loc, scale, shape, sample_size) 
+modelled_data = [generate_gev_data(loc, scale, shape, sample_size) 
                 for loc, scale, shape in zip(smoothed_loc_pred, smoothed_scale_pred, smoothed_shape_pred)]
 
 # Plotting both boxplots and QQ plots
@@ -2534,9 +2581,9 @@ fig, axs = plt.subplots(len(observed_data), 2, figsize=(15, 5*len(observed_data)
 if len(observed_data) == 1:  # If there's only one window, axs is not a 2D array
     axs = [axs]
 
-for i, (obs, mod) in enumerate(zip(observed_data, modeled_data)):
+for i, (obs, mod) in enumerate(zip(observed_data, modelled_data)):
     # Boxplot
-    axs[i][0].boxplot([obs, mod], patch_artist=True, labels=['Observed', 'Modeled'])
+    axs[i][0].boxplot([obs, mod], patch_artist=True, labels=['Observed', 'modelled'])
     axs[i][0].set_title(f'Window {i+1} Boxplot')
     axs[i][0].grid(True)
 
@@ -2551,7 +2598,7 @@ for i, (obs, mod) in enumerate(zip(observed_data, modeled_data)):
     max_val = max(np.max(obs_sorted), np.max(mod_sorted))
     axs[i][1].plot([0, max_val], [0, max_val], 'r-', linewidth=2)
     axs[i][1].set_xlabel('Observed Quantiles')
-    axs[i][1].set_ylabel('Modeled Quantiles')
+    axs[i][1].set_ylabel('modelled Quantiles')
     axs[i][1].grid(True)
 
 plt.tight_layout()
@@ -3257,393 +3304,6 @@ rcp85_median_data_tasmax = process_data(rcp85_models_tasmax, 'tasmax', selected_
 plot_median_data(rcp85_median_data_tasmax, 'tasmax', 'RCP 8.5')
 
 
-# # Median Total Precipitation 
-# Assuming you have the following DataFrames
-# pr_day_ACCESS1_0_rcp45, pr_day_CanESM2_rcp45, pr_day_CCSM4_rcp45, pr_day_CNRM_CM5_rcp45, pr_day_HadGEM2_rcp45, pr_day_MPI_ESM_LR_rcp45 
-# pr_day_ACCESS1_0_rcp85, pr_day_CanESM2_rcp85, pr_day_CCSM4_rcp85, pr_day_CNRM_CM5_rcp85, pr_day_HadGEM2_rcp85, pr_day_MPI_ESM_LR_rcp85 
-
-# Concatenate and calculate ensemble median for RCP 4.5
-pr_day_ensemble_median_rcp45 = pd.concat([
-    pr_day_ACCESS1_0_rcp45, 
-    pr_day_CanESM2_rcp45, 
-    pr_day_CCSM4_rcp45, 
-    pr_day_CNRM_CM5_rcp45, 
-    pr_day_HadGEM2_rcp45, 
-    pr_day_MPI_ESM_LR_rcp45
-]).groupby(level=0).median(numeric_only=True) 
-pr_day_ensemble_median_rcp45["time"] = pr_day_ACCESS1_0_rcp45["time"].values  # Copy 'time' index from any single model DataFrame 
-
-# Concatenate and calculate ensemble median for RCP 8.5
-pr_day_ensemble_median_rcp85 = pd.concat([
-    pr_day_ACCESS1_0_rcp85, 
-    pr_day_CanESM2_rcp85, 
-    pr_day_CCSM4_rcp85, 
-    pr_day_CNRM_CM5_rcp85, 
-    pr_day_HadGEM2_rcp85, 
-    pr_day_MPI_ESM_LR_rcp85
-]).groupby(level=0).median(numeric_only=True) 
-pr_day_ensemble_median_rcp85["time"] = pr_day_ACCESS1_0_rcp85["time"].values  # Copy 'time' index from any single model DataFrame if rcp_85 == "On":
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    
-    # Set the desired month number (e.g., 1 for January, 2 for February, etc.)
-    # This should be set directly to the natural month number (1-12)
-    month_number = selected_month - lag # 1 for January, 2 for February, etc.
-    
-    # Convert 'time' column to datetime format
-    pr_day_ensemble_median_rcp85['time'] = pd.to_datetime(pr_day_ensemble_median_rcp85['time'])
-    
-    # Set the 'time' column as the index
-    pr_day_ensemble_median_rcp85.set_index('time', inplace=True)
-    
-    # Add a new column for the month derived from the datetime index
-    pr_day_ensemble_median_rcp85['month'] = pr_day_ensemble_median_rcp85.index.month
-    
-    # Filter the DataFrame for the selected month
-    # This step correctly filters out the rows for the entire selected month
-    df_selected_month = pr_day_ensemble_median_rcp85[pr_day_ensemble_median_rcp85['month'] == month_number]
-    
-    # Group by year and calculate the total precipitation for each year in the selected month
-    # It sums up all daily values (mm/day) of the selected month for each year, giving the total mm for that month each year
-    total_precipitation_rcp85 = df_selected_month.groupby(df_selected_month.index.year)['pr'].sum()
-    
-    # Convert the resulting Series to a DataFrame
-    total_precipitation_df_rcp85 = total_precipitation_rcp85.reset_index()
-    
-    # Rename the columns for clarity
-    total_precipitation_df_rcp85.columns = ['year', 'total_precipitation_mm']  # Specify units in the column name for clarity
-    
-    # Display the resulting DataFrame
-    print(total_precipitation_df_rcp85)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(total_precipitation_df_rcp85['year'], total_precipitation_df_rcp85['total_precipitation_mm'], marker='o', linestyle='-')
-    plt.title(f'Total Precipitation for {pd.to_datetime("2000-" + str(month_number) + "-01").strftime("%B")} Across Years')
-    plt.xlabel('Year')
-    plt.ylabel('Total Precipitation (mm)')  # Specify units in the label for clarity
-    plt.grid(True)
-    plt.show()
-
-else: 
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    
-    # Set the desired month number (e.g., 1 for January, 2 for February, etc.)
-    # This should be set directly to the natural month number (1-12)
-    month_number = selected_month - lag # 1 for January, 2 for February, etc.
-    
-    # Convert 'time' column to datetime format
-    pr_day_ensemble_median_rcp45['time'] = pd.to_datetime(pr_day_ensemble_median_rcp45['time'])
-    
-    # Set the 'time' column as the index
-    pr_day_ensemble_median_rcp45.set_index('time', inplace=True)
-    
-    # Add a new column for the month derived from the datetime index
-    pr_day_ensemble_median_rcp45['month'] = pr_day_ensemble_median_rcp45.index.month
-    
-    # Filter the DataFrame for the selected month
-    # This step correctly filters out the rows for the entire selected month
-    df_selected_month = pr_day_ensemble_median_rcp45[pr_day_ensemble_median_rcp45['month'] == month_number]
-    
-    # Group by year and calculate the total precipitation for each year in the selected month
-    # It sums up all daily values (mm/day) of the selected month for each year, giving the total mm for that month each year
-    total_precipitation_rcp45 = df_selected_month.groupby(df_selected_month.index.year)['pr'].sum()
-    
-    # Convert the resulting Series to a DataFrame
-    total_precipitation_df_rcp45 = total_precipitation_rcp45.reset_index()
-    
-    # Rename the columns for clarity
-    total_precipitation_df_rcp45.columns = ['year', 'total_precipitation_mm']  # Specify units in the column name for clarity
-    
-    # Display the resulting DataFrame
-    print(total_precipitation_df_rcp45)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(total_precipitation_df_rcp45['year'], total_precipitation_df_rcp45['total_precipitation_mm'], marker='o', linestyle='-')
-    plt.title(f'Total Precipitation for {pd.to_datetime("2000-" + str(month_number) + "-01").strftime("%B")} Across Years')
-    plt.xlabel('Year')
-    plt.ylabel('Total Precipitation (mm)')  # Specify units in the label for clarity
-    plt.grid(True)
-    plt.show()
-# # Median Minimum Temperature
-import pandas as pd
-
-# Assuming you have the following DataFrames for RCP 4.5 and RCP 8.5 scenarios
-# tasmin_day_ACCESS1_0_rcp45, tasmin_day_CanESM2_rcp45, tasmin_day_CCSM4_rcp45, tasmin_day_CNRM_CM5_rcp45, tasmin_day_HadGEM2_rcp45, tasmin_day_MPI_ESM_LR_rcp45
-# tasmin_day_ACCESS1_0_rcp85, tasmin_day_CanESM2_rcp85, tasmin_day_CCSM4_rcp85, tasmin_day_CNRM_CM5_rcp85, tasmin_day_HadGEM2_rcp85, tasmin_day_MPI_ESM_LR_rcp85
-
-# Concatenate and calculate ensemble median for RCP 4.5
-tasmin_day_ensemble_median_rcp45 = pd.concat([
-    tasmin_day_ACCESS1_0_rcp45, 
-    tasmin_day_CanESM2_rcp45, 
-    tasmin_day_CCSM4_rcp45, 
-    tasmin_day_CNRM_CM5_rcp45, 
-    tasmin_day_HadGEM2_rcp45, 
-    tasmin_day_MPI_ESM_LR_rcp45
-]).groupby(level=0).median(numeric_only=True)
-tasmin_day_ensemble_median_rcp45["time"] = tasmin_day_ACCESS1_0_rcp45["time"].values  # Ensure the 'time' column is correctly aligned
-
-# Concatenate and calculate ensemble median for RCP 8.5
-tasmin_day_ensemble_median_rcp85 = pd.concat([
-    tasmin_day_ACCESS1_0_rcp85, 
-    tasmin_day_CanESM2_rcp85, 
-    tasmin_day_CCSM4_rcp85, 
-    tasmin_day_CNRM_CM5_rcp85, 
-    tasmin_day_HadGEM2_rcp85, 
-    tasmin_day_MPI_ESM_LR_rcp85
-]).groupby(level=0).median(numeric_only=True)
-tasmin_day_ensemble_median_rcp85["time"] = tasmin_day_ACCESS1_0_rcp85["time"].values  # Ensure the 'time' column is correctly aligned
-import pandas as pd
-import matplotlib.pyplot as plt
-
-month_number = selected_month - lag
-
-if rcp_85 == "On":
-    # Assuming you have the following DataFrame for minimum temperature under RCP 8.5 scenario
-    # tasmin_day_ensemble_median_rcp85
-    
-    # Convert 'time' column to datetime format
-    tasmin_day_ensemble_median_rcp85['time'] = pd.to_datetime(tasmin_day_ensemble_median_rcp85['time'])
-    
-    # Set the 'time' column as the index
-    tasmin_day_ensemble_median_rcp85.set_index('time', inplace=True)
-    
-    # Add a new column for the month derived from the index
-    tasmin_day_ensemble_median_rcp85['month'] = tasmin_day_ensemble_median_rcp85.index.month
-    
-    # Filter the DataFrame for the selected month
-    df_selected_month_tasmin = tasmin_day_ensemble_median_rcp85[tasmin_day_ensemble_median_rcp85['month'] == month_number].copy()
-    
-    # Calculate the 7-day moving average before finding the minimum temperature
-    df_selected_month_tasmin['tasmin_7day_avg'] = df_selected_month_tasmin['tasmin'].rolling(window=min_temp_window_size, min_periods=1).mean()
-    
-    # Group by year and calculate the minimum temperature for each year in the selected month
-    min_temperature_rcp85 = df_selected_month_tasmin.groupby(df_selected_month_tasmin.index.year)['tasmin_7day_avg'].min()
-    
-    # Convert the resulting Series to a DataFrame
-    min_temperature_df_rcp85 = min_temperature_rcp85.reset_index()
-    
-    # Rename the columns for clarity
-    min_temperature_df_rcp85.columns = ['year', 'min_temperature']
-    
-    # Display the resulting DataFrame
-    print(min_temperature_df_rcp85)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(min_temperature_df_rcp85['year'], min_temperature_df_rcp85['min_temperature'], marker='o', linestyle='-')
-    plt.title(f'Minimum Temperature (7-day Avg) for Month {month_number} Across Years (RCP 8.5)')
-    plt.xlabel('Year')
-    plt.ylabel('Minimum Temperature (°C)')
-    plt.grid(True)
-    plt.show()
-
-else:
-    # Assuming you have the following DataFrame for minimum temperature under RCP 4.5 scenario
-    # tasmin_day_ensemble_median_rcp45
-    
-    # Convert 'time' column to datetime format
-    tasmin_day_ensemble_median_rcp45['time'] = pd.to_datetime(tasmin_day_ensemble_median_rcp45['time'])
-    
-    # Set the 'time' column as the index
-    tasmin_day_ensemble_median_rcp45.set_index('time', inplace=True)
-    
-    # Add a new column for the month derived from the index
-    tasmin_day_ensemble_median_rcp45['month'] = tasmin_day_ensemble_median_rcp45.index.month
-    
-    # Filter the DataFrame for the selected month
-    df_selected_month_tasmin = tasmin_day_ensemble_median_rcp45[tasmin_day_ensemble_median_rcp45['month'] == month_number].copy()
-    
-    # Calculate the 7-day moving average before finding the minimum temperature
-    df_selected_month_tasmin['tasmin_7day_avg'] = df_selected_month_tasmin['tasmin'].rolling(window=min_temp_window_size, min_periods=1).mean()
-    
-    # Group by year and calculate the minimum temperature for each year in the selected month
-    min_temperature_rcp45 = df_selected_month_tasmin.groupby(df_selected_month_tasmin.index.year)['tasmin_7day_avg'].min()
-    
-    # Convert the resulting Series to a DataFrame
-    min_temperature_df_rcp45 = min_temperature_rcp45.reset_index()
-    
-    # Rename the columns for clarity
-    min_temperature_df_rcp45.columns = ['year', 'min_temperature']
-    
-    # Display the resulting DataFrame
-    print(min_temperature_df_rcp45)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(min_temperature_df_rcp45['year'], min_temperature_df_rcp45['min_temperature'], marker='o', linestyle='-')
-    plt.title(f'Minimum Temperature (7-day Avg) for Month {month_number} Across Years (RCP 4.5)')
-    plt.xlabel('Year')
-    plt.ylabel('Minimum Temperature (°C)')
-    plt.grid(True)
-    plt.show()
-
-
-# # Median Maximum Temperature 
-import pandas as pd
-
-# Assuming you have the following DataFrames for RCP 4.5 and RCP 8.5 scenarios
-# tasmax_day_ACCESS1_0_rcp45, tasmax_day_CanESM2_rcp45, tasmax_day_CCSM4_rcp45, tasmax_day_CNRM_CM5_rcp45, tasmax_day_HadGEM2_rcp45, tasmax_day_MPI_ESM_LR_rcp45
-# tasmax_day_ACCESS1_0_rcp85, tasmax_day_CanESM2_rcp85, tasmax_day_CCSM4_rcp85, tasmax_day_CNRM_CM5_rcp85, tasmax_day_HadGEM2_rcp85, tasmax_day_MPI_ESM_LR_rcp85
-
-# Concatenate and calculate ensemble median for RCP 4.5
-tasmax_day_ensemble_median_rcp45 = pd.concat([
-    tasmax_day_ACCESS1_0_rcp45, 
-    tasmax_day_CanESM2_rcp45, 
-    tasmax_day_CCSM4_rcp45, 
-    tasmax_day_CNRM_CM5_rcp45, 
-    tasmax_day_HadGEM2_rcp45, 
-    tasmax_day_MPI_ESM_LR_rcp45
-]).groupby(level=0).median(numeric_only=True)
-tasmax_day_ensemble_median_rcp45["time"] = tasmax_day_ACCESS1_0_rcp45["time"].values  # Ensure the 'time' column is correctly aligned
-
-# Concatenate and calculate ensemble median for RCP 8.5
-tasmax_day_ensemble_median_rcp85 = pd.concat([
-    tasmax_day_ACCESS1_0_rcp85, 
-    tasmax_day_CanESM2_rcp85, 
-    tasmax_day_CCSM4_rcp85, 
-    tasmax_day_CNRM_CM5_rcp85, 
-    tasmax_day_HadGEM2_rcp85, 
-    tasmax_day_MPI_ESM_LR_rcp85
-]).groupby(level=0).median(numeric_only=True)
-tasmax_day_ensemble_median_rcp85["time"] = tasmax_day_ACCESS1_0_rcp85["time"].values  # Ensure the 'time' coimport pandas as pd
-import matplotlib.pyplot as plt
-
-month_number = selected_month - lag  # Adjust this directly to the desired month number
-
-if rcp_85 == "On":
-    # Assuming you have the following DataFrame for maximum temperature under RCP 8.5 scenario
-    # tasmax_day_ensemble_median_rcp85
-    
-    # Convert 'time' column to datetime format
-    tasmax_day_ensemble_median_rcp85['time'] = pd.to_datetime(tasmax_day_ensemble_median_rcp85['time'])
-    
-    # Set the 'time' column as the index
-    tasmax_day_ensemble_median_rcp85.set_index('time', inplace=True)
-    
-    # Add a new column for the month derived from the datetime index
-    tasmax_day_ensemble_median_rcp85['month'] = tasmax_day_ensemble_median_rcp85.index.month
-    
-    # Filter the DataFrame for the selected month
-    df_selected_month_tasmax = tasmax_day_ensemble_median_rcp85[tasmax_day_ensemble_median_rcp85['month'] == month_number]
-    
-    # Calculate the 7-day moving average before finding the maximum temperature
-    df_selected_month_tasmax['tasmax_7day_avg'] = df_selected_month_tasmax['tasmax'].rolling(window=temp_window_size, min_periods=1).mean()
-    
-    # Group by year and calculate the maximum temperature for each year in the selected month
-    max_temperature_rcp85 = df_selected_month_tasmax.groupby(df_selected_month_tasmax.index.year)['tasmax_7day_avg'].max()
-    
-    # Convert the resulting Series to a DataFrame
-    max_temperature_df_rcp85 = max_temperature_rcp85.reset_index()
-    
-    # Rename the columns for clarity
-    max_temperature_df_rcp85.columns = ['year', 'max_temperature']
-    
-    # Display the resulting DataFrame
-    print(max_temperature_df_rcp85)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(max_temperature_df_rcp85['year'], max_temperature_df_rcp85['max_temperature'], marker='o', linestyle='-')
-    plt.title(f'Maximum Temperature (7-day Avg) for {pd.to_datetime("2000-" + str(month_number) + "-01").strftime("%B")} Across Years (RCP 8.5)')
-    plt.xlabel('Year')
-    plt.ylabel('Maximum Temperature (°C)')
-    plt.grid(True)
-    plt.show()
-
-else:
-    # Assuming you have the following DataFrame for maximum temperature under RCP 4.5 scenario
-    # tasmax_day_ensemble_median_rcp45
-    
-    # Convert 'time' column to datetime format
-    tasmax_day_ensemble_median_rcp45['time'] = pd.to_datetime(tasmax_day_ensemble_median_rcp45['time'])
-    
-    # Set the 'time' column as the index
-    tasmax_day_ensemble_median_rcp45.set_index('time', inplace=True)
-    
-    # Add a new column for the month derived from the datetime index
-    tasmax_day_ensemble_median_rcp45['month'] = tasmax_day_ensemble_median_rcp45.index.month
-    
-    # Filter the DataFrame for the selected month
-    df_selected_month_tasmax = tasmax_day_ensemble_median_rcp45[tasmax_day_ensemble_median_rcp45['month'] == month_number]
-    
-    # Calculate the 7-day moving average before finding the maximum temperature
-    df_selected_month_tasmax['tasmax_7day_avg'] = df_selected_month_tasmax['tasmax'].rolling(window=temp_window_size, min_periods=1).mean()
-    
-    # Group by year and calculate the maximum temperature for each year in the selected month
-    max_temperature_rcp45 = df_selected_month_tasmax.groupby(df_selected_month_tasmax.index.year)['tasmax_7day_avg'].max()
-    
-    # Convert the resulting Series to a DataFrame
-    max_temperature_df_rcp45 = max_temperature_rcp45.reset_index()
-    
-    # Rename the columns for clarity
-    max_temperature_df_rcp45.columns = ['year', 'max_temperature']
-    
-    # Display the resulting DataFrame
-    print(max_temperature_df_rcp45)
-    
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(max_temperature_df_rcp45['year'], max_temperature_df_rcp45['max_temperature'], marker='o', linestyle='-')
-    plt.title(f'Maximum Temperature (7-day Avg) for {pd.to_datetime("2000-" + str(month_number) + "-01").strftime("%B")} Across Years (RCP 4.5)')
-    plt.xlabel('Year')
-    plt.ylabel('Maximum Temperature (°C)')
-    plt.grid(True)
-    plt.show()
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import statsmodels.api as sm
-
-# Assuming all required data and functions are defined (selected_month_total_precip, indices arrays, calculate_lmom_df, etc.)
-
-# Assuming 'selected_month_total_precip' is a DataFrame from the first source and has a column 'total_precip'.
-# Assuming 'rcp85_median_data', 'rcp45_median_data' are DataFrames computed earlier and have columns 'median_total_precipitation_mm'.
-
-# Data extraction from the first source
-first_source_precip = np.array(selected_month_total_precip['total_precip'])[total_precip_indices]
-
-# Data extraction from the second source (using the intermodel median computed earlier)
-if rcp_85 == "On":
-    second_source_precip = np.array(rcp85_median_data['median_total_precipitation_mm'])[68:]
-else:
-    second_source_precip = np.array(rcp45_median_data['median_total_precipitation_mm'])[68:]
-
-# Combining the data
-combined_precip = np.concatenate((first_source_precip, second_source_precip))
-
-# Prepare the combined data as a dictionary
-new_signal_data = {
-    'Total Precip': combined_precip
-}
-
-# Calculate L-moments for the new data
-new_lmom_dfs = {signal: calculate_lmom_df(data, window_size, l_moment_names) for signal, data in new_signal_data.items()}
-
-# Apply rolling mean to the new L-moment DataFrames
-new_lmom_dfs_smoothed = {signal: df.rolling(window=rolling_window_size, min_periods=1).mean().dropna() for signal, df in new_lmom_dfs.items()}
-
-# Extract and predict the first four L-moments
-predicted_l_moments = {}
-for l_moment in ['L-moment 1', 'L-moment 2', 'L-moment 3', 'L-moment 4']:
-    model_info = best_models.get(l_moment)
-    if model_info:
-        model, _, _, _, _, _, predictors_used = model_info
-        coefficients = model.params[1:]
-        intercept = model.params[0]
-        new_predictors = np.hstack([new_lmom_dfs_smoothed[signal_names[idx]][l_m].values.reshape(-1, 1) for idx, l_m in predictors_used])
-        new_predictions = predict_with_model(intercept, coefficients, new_predictors)
-        predicted_l_moments[l_moment] = new_predictions
-
-# Now predicted_l_moments contains the predictions for the first four L-moments
-l_moment1_array = np.array(predicted_l_moments['L-moment 1'])
-l_moment2_array = np.array(predicted_l_moments['L-moment 2'])
-l_moment3_array = np.array(predicted_l_moments['L-moment 3'])
-l_moment4_array = np.array(predicted_l_moments['L-moment 4'])
-
-Goat_l_moments = np.vstack([l_moment1_array, l_moment2_array, l_moment3_array, l_moment4_array])
 # In[56]:
 
 
@@ -3689,25 +3349,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-plt.figure(figsize=(12, 6))
-plt.plot(first_source_years, first_source_tasmin, label='Observed Tasmin', marker='o')
-plt.plot(years_second_source, second_source_tasmin, label='GCM Model Ensemble Median Tasmin', marker='x')
-plt.xlabel('Year')
-plt.ylabel('Tasmin (°C)')
-plt.title('Tasmin from First and Second Sources')
-plt.legend()
-plt.grid(True)
-plt.show()
 
-plt.figure(figsize=(12, 6))
-plt.plot(first_source_years, first_source_tasmax, label='Observed Tasmax', marker='o')
-plt.plot(years_second_source, second_source_tasmax, label='GCM Model Ensemble Median Tasmax', marker='x')
-plt.xlabel('Year')
-plt.ylabel('Tasmax (°C)')
-plt.title('Tasmax from First and Second Sources')
-plt.legend()
-plt.grid(True)
-plt.show()
 # In[57]:
 
 
@@ -4036,37 +3678,7 @@ data = np.array([
     [ 1.00, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000],
 ])
 
-# Extracting the values
-tau_3 = data[:, 0]
-GLO = data[:, 1]
-GEV = data[:, 2]
-GPA = data[:, 3]
-GNO = data[:, 4]
-PE3 = data[:, 5]
-WAK_LB = data[:, 6]
-ALL_LB = data[:, 7]
 
-# Plotting the L-moment ratio diagram
-plt.figure(figsize=(10, 6))
-plt.plot(tau_3, GLO, label='GLO', color='blue', linestyle='solid')
-plt.plot(tau_3, GEV, label='GEV', color='#00C000', linestyle='solid')
-plt.plot(tau_3, GPA, label='GPA', color='red', linestyle='solid')
-plt.plot(tau_3, GNO, label='GNO', color='black', linestyle='solid')
-plt.plot(tau_3, PE3, label='PE3', color='#00E0E0', linestyle='solid')
-plt.plot(tau_3, WAK_LB, label='WAK.LB', color='red', linestyle='--')
-plt.plot(tau_3, ALL_LB, label='ALL.LB', color='black', linestyle='--')
-
-# Adding a legend
-plt.legend()
-
-# Setting the labels and title
-plt.xlabel(r'$L$-skewness')
-plt.ylabel(r'$L$-kurtosis')
-plt.title('L-Moment Ratio Diagram')
-
-# Show the plot
-plt.grid(True)
-plt.show()
 # In[62]:
 
 
@@ -4095,7 +3707,7 @@ scatter_pred_1 = axs[0].scatter(tau3_pred, tau2_pred, c=window_positions_pred, c
 axs[0].set_xlabel('L-skewness ($\\tau_3$)')
 axs[0].set_ylabel('L-CV ($\\tau_2$)')
 axs[0].set_title('L-skewness vs. L-CV')
-cb1 = fig.colorbar(scatter_obs_1, ax=axs[0], label='Window Position')
+cb1 = fig.colorbar(scatter_pred_1, ax=axs[0], label='Window Position')
 axs[0].legend()
 
 # Adjust axis limits for L-skewness vs. L-CV Plot
@@ -4195,372 +3807,7 @@ plt.savefig('theo_ratios.png')
 plt.tight_layout()
 plt.show()
 
-import numpy as np
-import matplotlib.pyplot as plt
-from collections import Counter
-import math
 
-# Assuming lmom_df, tau3_pred, tau4_pred, tau2_pred, window_positions_obs, window_positions_pred, and data are defined
-
-# Extracting the values from the data array
-tau_3 = data[:, 0]
-GLO = data[:, 1]
-GEV = data[:, 2]
-GPA = data[:, 3]
-GNO = data[:, 4]
-PE3 = data[:, 5]
-WAK_LB = data[:, 6]
-ALL_LB = data[:, 7]
-
-# Normalize window positions across datasets
-all_window_positions = np.concatenate([window_positions_pred, window_positions_obs])
-norm = plt.Normalize(all_window_positions.min(), all_window_positions.max())
-cmap = plt.cm.viridis
-
-# Ensure tau3_pred, tau4_pred, and tau2_pred are of the same length
-assert len(tau3_pred) == len(tau4_pred), "tau3_pred and tau4_pred must be the same length"
-assert len(tau3_pred) == len(tau2_pred), "tau3_pred and tau2_pred must be the same length"
-
-# Functions to fit distributions using L-moments
-def pargev(lmom):
-    lmom_ratios = [lmom[0], lmom[1], lmom[2] / lmom[1]]
-    SMALL = 1e-5
-    eps = 1e-6
-    maxit = 20
-    EU = 0.57721566
-    DL2 = np.log(2)
-    DL3 = np.log(3)
-    A0 = 0.28377530
-    A1 = -1.21096399
-    A2 = -2.50728214
-    A3 = -1.13455566
-    A4 = -0.07138022
-    B1 = 2.06189696
-    B2 = 1.31912239
-    B3 = 0.25077104
-    C1 = 1.59921491
-    C2 = -0.48832213
-    C3 = 0.01573152
-    D1 = -0.64363929
-    D2 = 0.08985247
-    T3 = lmom_ratios[2]
-    if lmom_ratios[1] <= 0 or abs(T3) >= 1:
-        raise ValueError("Invalid L-Moments")
-    if T3 <= 0:
-        G = (A0 + T3 * (A1 + T3 * (A2 + T3 * (A3 + T3 * A4)))) / (1 + T3 * (B1 + T3 * (B2 + T3 * B3)))
-        if T3 >= -0.8:
-            para3 = G
-            GAM = np.exp(math.lgamma(1 + G))
-            para2 = lmom_ratios[1] * G / (GAM * (1 - 2**-G))
-            para1 = lmom_ratios[0] - para2 * (1 - GAM) / G
-            return para1, para2, para3
-        elif T3 <= -0.97:
-            G = 1 - np.log(1 + T3) / DL2
-        T0 = (T3 + 3) * 0.5
-        for IT in range(1, maxit):
-            X2 = 2**-G
-            X3 = 3**-G
-            XX2 = 1 - X2
-            XX3 = 1 - X3
-            T = XX3 / XX2
-            DERIV = (XX2 * X3 * DL3 - XX3 * X2 * DL2) / (XX2**2)
-            GOLD = G
-            G -= (T - T0) / DERIV
-            if abs(G - GOLD) <= eps * G:
-                para3 = G
-                GAM = np.exp(math.lgamma(1 + G))
-                para2 = lmom_ratios[1] * G / (GAM * (1 - 2**-G))
-                para1 = lmom_ratios[0] - para2 * (1 - GAM) / G
-                return para1, para2, para3
-        raise Exception("Iteration has not converged")
-    else:
-        Z = 1 - T3
-        G = (-1 + Z * (C1 + Z * (C2 + Z * C3))) / (1 + Z * (D1 + Z * D2))
-        if abs(G) < SMALL:
-            para2 = lmom_ratios[1] / DL2
-            para1 = lmom_ratios[0] - EU * para2
-            para3 = 0
-        else:
-            para3 = G
-            GAM = np.exp(math.lgamma(1 + G))
-            para2 = lmom_ratios[1] * G / (GAM * (1 - 2**-G))
-            para1 = lmom_ratios[0] - para2 * (1 - GAM) / G
-        return para1, para2, para3
-
-def fit_gpd(l_moments):
-    L1, L2, L3 = l_moments
-    T3 = L3 / L2
-    k = (1 - 3 * T3) / (1 + T3)
-    alpha = L2 * (1 + k)
-    xi = L1 - alpha / (1 + k)
-    return xi, alpha, k
-
-def fit_lognormal(l_moments):
-    L1, L2 = l_moments[:2]
-    mu = np.log(L1) - 0.5 * np.log(1 + (L2 / L1)**2)
-    sigma = np.sqrt(np.log(1 + (L2 / L1)**2))
-    return mu, sigma
-
-def fit_glo(l_moments):
-    L1, L2, T3 = l_moments
-    k = 2 / (3 + T3) - 1
-    sigma = L2 / (k * (1 - k))
-    xi = L1 - sigma * (1 - k) / k
-    return xi, sigma, k
-
-def fit_gno(l_moments):
-    L1, L2, T3 = l_moments
-    k = 2 * (1 - T3) / (1 + T3)
-    sigma = L2 * (1 + k)
-    xi = L1 - sigma * (1 - k) / k
-    return xi, sigma, k
-
-def fit_pe3(l_moments):
-    L1, L2, T3 = l_moments
-    alpha = 4 / (T3**2)
-    beta = L2 * T3 / 2
-    gamma = L1 - 2 * beta
-    return gamma, beta, alpha
-
-# Calculate the closest distribution for each predicted window data point
-closest_distributions = []
-gev_params = []
-gpd_params = []
-ln_params = []
-glo_params = []
-gno_params = []
-pe3_params = []
-
-# Debugging info: Ensure we are iterating over the correct number of windows
-num_windows = Goat_l_moments.shape[1]
-print(f"Number of windows: {num_windows}")
-
-def euclidean_distance(x1, y1, x2, y2):
-    return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-
-for window_idx in range(num_windows):
-    tau3_p, tau4_p, tau2_p = tau3_pred[window_idx], tau4_pred[window_idx], tau2_pred[window_idx]
-    
-    distances = {}
-    distances['GLO'] = np.min(euclidean_distance(tau3_p, tau4_p, tau_3, GLO))
-    distances['GEV'] = np.min(euclidean_distance(tau3_p, tau4_p, tau_3, GEV))
-    distances['GPA'] = np.min(euclidean_distance(tau3_p, tau4_p, tau_3, GPA))
-    distances['GNO'] = np.min(euclidean_distance(tau3_p, tau4_p, tau_3, GNO))
-    distances['PE3'] = np.min(euclidean_distance(tau3_p, tau4_p, tau_3, PE3))
-    
-    closest_distribution = min(distances, key=distances.get)
-    closest_distributions.append(closest_distribution)
-    
-    l_moments = Goat_l_moments[:, window_idx]  # Use Goat_l_moments for each window
-    
-    # Fit parameters based on the closest distribution
-    if closest_distribution == 'GEV':
-        params = pargev(l_moments)
-        if params[0] is not None:  # Only append if valid params are returned
-            gev_params.append((window_idx, params))
-    elif closest_distribution == 'GPD':
-        params = fit_gpd(l_moments)
-        gpd_params.append((window_idx, params))
-    elif closest_distribution == 'Log-normal':
-        params = fit_lognormal(l_moments)
-        ln_params.append((window_idx, params))
-    elif closest_distribution == 'GLO':
-        params = fit_glo(l_moments)
-        glo_params.append((window_idx, params))
-    elif closest_distribution == 'GNO':
-        params = fit_gno(l_moments)
-        gno_params.append((window_idx, params))
-    elif closest_distribution == 'PE3':
-        params = fit_pe3(l_moments)
-        pe3_params.append((window_idx, params))
-
-# Count the number of times each distribution is selected
-distribution_counts = Counter(closest_distributions)
-majority_distribution = distribution_counts.most_common(1)[0]
-
-# Print the list of closest distributions, the counts, and the majority distribution
-print("Closest Distributions for Predicted Data Points:", closest_distributions)
-print("Distribution counts:", distribution_counts)
-print("Majority Distribution:", majority_distribution)
-
-# Extract the parameters for plotting, indexed by time window
-best_params = {
-    'GEV': {
-        'loc': [None] * num_windows,
-        'scale': [None] * num_windows,
-        'shape': [None] * num_windows
-    },
-    'GPD': {
-        'loc': [None] * num_windows,
-        'scale': [None] * num_windows,
-        'shape': [None] * num_windows
-    },
-    'Log-normal': {
-        'loc': [None] * num_windows,
-        'scale': [None] * num_windows
-    },
-    'GLO': {
-        'loc': [None] * num_windows,
-        'scale': [None] * num_windows,
-        'shape': [None] * num_windows
-    },
-    'GNO': {
-        'loc': [None] * num_windows,
-        'scale': [None] * num_windows,
-        'shape': [None] * num_windows
-    },
-    'PE3': {
-        'loc': [None] * num_windows,
-        'scale': [None] * num_windows,
-        'shape': [None] * num_windows
-    }
-}
-
-for window_idx, params in gev_params:
-    best_params['GEV']['loc'][window_idx], best_params['GEV']['scale'][window_idx], best_params['GEV']['shape'][window_idx] = params
-
-for window_idx, params in gpd_params:
-    best_params['GPD']['loc'][window_idx], best_params['GPD']['scale'][window_idx], best_params['GPD']['shape'][window_idx] = params
-
-for window_idx, params in ln_params:
-    best_params['Log-normal']['loc'][window_idx], best_params['Log-normal']['scale'][window_idx] = params
-
-for window_idx, params in glo_params:
-    best_params['GLO']['loc'][window_idx], best_params['GLO']['scale'][window_idx], best_params['GLO']['shape'][window_idx] = params
-
-for window_idx, params in gno_params:
-    best_params['GNO']['loc'][window_idx], best_params['GNO']['scale'][window_idx], best_params['GNO']['shape'][window_idx] = params
-
-for window_idx, params in pe3_params:
-    best_params['PE3']['loc'][window_idx], best_params['PE3']['scale'][window_idx], best_params['PE3']['shape'][window_idx] = params
-
-# Filter out None values for plotting
-def filter_none(values):
-    return np.array([v if v is not None else np.nan for v in values])
-
-# Create subplots for each parameter
-fig, axs = plt.subplots(3, 1, figsize=(16, 12))
-
-# Plot location parameters
-for dist in best_params:
-    if 'loc' in best_params[dist]:
-        axs[0].plot(filter_none(best_params[dist]['loc']), label=dist, marker='x')
-axs[0].set_title('Location Parameter')
-axs[0].legend()
-
-# Plot scale parameters
-for dist in best_params:
-    if 'scale' in best_params[dist]:
-        axs[1].plot(filter_none(best_params[dist]['scale']), label=dist, marker='x')
-axs[1].set_title('Scale Parameter')
-axs[1].legend()
-
-# Plot shape parameters
-for dist in best_params:
-    if 'shape' in best_params[dist]:
-        axs[2].plot(filter_none(best_params[dist]['shape']), label=dist, marker='x')
-axs[2].set_title('Shape Parameter')
-axs[2].legend()
-
-# Set common x-axis label
-for ax in axs:
-    ax.set_xlabel('Time Window')
-
-# Adjust spacing between subplots
-plt.tight_layout()
-
-# Show the plot
-plt.show()from scipy.optimize import fsolve
-import math
-import numpy as np
-
-def pargev_fsolve(lmom):
-    SMALL = 1e-5
-    lmom_ratios = [lmom[0], lmom[1], lmom[2] / lmom[1]]
-    
-    T3 = lmom_ratios[2]
-    if lmom_ratios[1] <= 0 or abs(T3) >= 1:
-        raise ValueError("Invalid L-Moments")
-    
-    if T3 <= 0:
-        def func(G):
-            return 2 * (1 - 3**(-G)) / (1 - 2**(-G)) - (3 - T3)
-        G = fsolve(func, 0.01)[0]  # Solve for the shape parameter
-        if T3 >= -0.8:
-            GAM = math.exp(math.lgamma(1 + G))
-            para2 = lmom_ratios[1] * G / (GAM * (1 - 2**-G))
-            para1 = lmom_ratios[0] - para2 * (1 - GAM) / G
-        elif T3 <= -0.97:
-            G = 1 - math.log(1 + T3) / math.log(2)
-    else:
-        Z = 1 - T3
-        G = (-1 + Z * (1.59921491 + Z * (-0.48832213 + Z * 0.01573152))) / (1 + Z * (-0.64363929 + Z * 0.08985247))
-        if abs(G) < SMALL:
-            para2 = lmom_ratios[1] / math.log(2)
-            para1 = lmom_ratios[0] - 0.57721566 * para2
-            para3 = 0
-        else:
-            GAM = math.exp(math.lgamma(1 + G))
-            para2 = lmom_ratios[1] * G / (GAM * (1 - 2**-G))
-            para1 = lmom_ratios[0] - para2 * (1 - GAM) / G
-    return para1, para2, G
-
-def fit_gev_fsolve(l_moments):
-    locs, scales, shapes = [], [], []
-    for i in range(l_moments.shape[1]):
-        loc, scale, shape = pargev_fsolve(l_moments[:, i])
-        locs.append(loc)
-        scales.append(scale)
-        shapes.append(shape)
-    return np.array(locs), np.array(scales), np.array(shapes)
-
-# Fit GEV using pargev_fsolve
-Goat_loc_obs_fsolve, Goat_scale_obs_fsolve, Goat_shape_obs_fsolve = fit_gev_fsolve(Goat_l_moments)
-
-# Fit GEV using pargev
-Goat_loc_obs, Goat_scale_obs, Goat_shape_obs = fit_gev(Goat_l_moments)
-
-# Time windows for x-axis
-time_windows = np.arange(Goat_l_moments.shape[1])
-
-# Plot the parameters for both methods
-fig, axs = plt.subplots(3, 1, figsize=(12, 18))
-
-# Plot location parameters
-axs[0].plot(time_windows, Goat_loc_obs_fsolve, label='Observed Data (fsolve)', marker='x')
-axs[0].plot(time_windows, Goat_loc_obs, label='Observed Data (pargev)', marker='o')
-axs[0].set_title('GEV Location Parameter')
-axs[0].legend()
-
-# Plot scale parameters
-axs[1].plot(time_windows, Goat_scale_obs_fsolve, label='Observed Data (fsolve)', marker='x')
-axs[1].plot(time_windows, Goat_scale_obs, label='Observed Data (pargev)', marker='o')
-axs[1].set_title('GEV Scale Parameter')
-axs[1].legend()
-
-# Plot shape parameters
-axs[2].plot(time_windows, Goat_shape_obs_fsolve, label='Observed Data (fsolve)', marker='x')
-axs[2].plot(time_windows, Goat_shape_obs, label='Observed Data (pargev)', marker='o')
-axs[2].set_title('GEV Shape Parameter')
-axs[2].legend()
-
-# Set common x-axis label
-for ax in axs:
-    ax.set_xlabel('Time Window')
-
-# Adjust spacing between subplots
-plt.tight_layout()
-
-# Show the plot
-plt.show()
-
-# Print the fitted parameters for comparison
-print("Location Parameters (fsolve): ", Goat_loc_obs_fsolve)
-print("Scale Parameters (fsolve): ", Goat_scale_obs_fsolve)
-print("Shape Parameters (fsolve): ", Goat_shape_obs_fsolve)
-print("Location Parameters (pargev): ", Goat_loc_obs)
-print("Scale Parameters (pargev): ", Goat_scale_obs)
-print("Shape Parameters (pargev): ", Goat_shape_obs)
 # In[63]:
 
 
@@ -4658,520 +3905,6 @@ plt.show()
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import glob
-
-# Load observed and projected GEV parameters
-observed_file = 'Goat_GEV_parameters_observed.csv'
-projected_file = 'Goat_GEV_parameters_projected.csv'
-
-# Read observed parameters
-observed_params_df = pd.read_csv(observed_file)
-Goat_loc_obs = observed_params_df['Location']
-Goat_scale_obs = observed_params_df['Scale']
-Goat_shape_obs = observed_params_df['Shape']
-
-# Read projected parameters
-projected_params_df = pd.read_csv(projected_file)
-Goat_loc_pred = projected_params_df['Location']
-Goat_scale_pred = projected_params_df['Scale']
-Goat_shape_pred = projected_params_df['Shape']
-
-# Exclude the overlapping part of the projected parameters
-overlap_length = len(Goat_loc_obs)
-Goat_loc_pred = Goat_loc_pred[overlap_length:]
-Goat_scale_pred = Goat_scale_pred[overlap_length:]
-Goat_shape_pred = Goat_shape_pred[overlap_length:]
-
-# Combine the observed and projected parameters
-combined_loc_params = list(Goat_loc_obs) + list(Goat_loc_pred)
-combined_scale_params = list(Goat_scale_obs) + list(Goat_scale_pred)
-combined_shape_params = list(Goat_shape_obs) + list(Goat_shape_pred)
-
-# Save the combined data to a CSV file
-rcp_scenario = 'RCP85' if rcp_85 == 'On' else 'RCP45'  # Assuming rcp_85 is defined
-window_size = window_size  # Replace with actual window size variable
-gcm_model = 'GCM1'  # Replace with actual GCM model variable
-
-combined_params_df = pd.DataFrame({
-    'Location': combined_loc_params,
-    'Scale': combined_scale_params,
-    'Shape': combined_shape_params
-})
-combined_filename = f'Goat_GEV_parameters_Window_{window_size}_{gcm_model}_{rcp_scenario}.csv'
-combined_params_df.to_csv(combined_filename, index=False)
-
-# Load all combined CSV files
-csv_files = glob.glob('Goat_GEV_parameters_Window_*.csv')
-
-# Create a figure with subplots for each parameter
-fig, axs = plt.subplots(1, 3, figsize=(18, 6))  # Change to 1 row and 3 columns
-
-# Function to determine line style based on filename
-def get_line_style(file):
-    if 'RCP45' in file:
-        return '-'
-    elif 'RCP85' in file:
-        return '--'
-    else:
-        return '-.'
-
-# Plot each combined file
-for file in csv_files:
-    parts = file.split('_')
-    window_size = parts[-3]
-    gcm_model = parts[-2]
-    rcp_scenario = parts[-1].split('.')[0]
-    
-    combined_params_df = pd.read_csv(file)
-    combined_loc_params = combined_params_df['Location']
-    combined_scale_params = combined_params_df['Scale']
-    combined_shape_params = combined_params_df['Shape']
-    
-    line_style = get_line_style(file)
-    
-    # Plot location parameters
-    axs[0].plot(combined_loc_params, line_style, label=f'{rcp_scenario}; Window {window_size}')
-    
-    # Plot scale parameters
-    axs[1].plot(combined_scale_params, line_style, label=f'{rcp_scenario}; Window {window_size}')
-    
-    # Plot shape parameters
-    axs[2].plot(combined_shape_params, line_style, label=f'{rcp_scenario}; Window {window_size}')
-
-# Adding the dividing line
-for ax in axs:
-    ax.axvline(x=overlap_length, color='gray', linestyle='--', label='Transition to Projected GCM Data')
-
-# Set titles and labels
-axs[0].set_title('GEV Location Parameter')
-axs[0].set_xlabel('Time Window')
-axs[0].set_ylabel('Location')
-axs[0].legend()
-
-axs[1].set_title('GEV Scale Parameter')
-axs[1].set_xlabel('Time Window')
-axs[1].set_ylabel('Scale')
-axs[1].legend()
-
-axs[2].set_title('GEV Shape Parameter')
-axs[2].set_xlabel('Time Window')
-axs[2].set_ylabel('Shape')
-axs[2].legend()
-
-# Adjust spacing between subplots
-plt.tight_layout()
-
-# Save the plot as a PNG file
-plt.savefig('sensitivity.png')
-
-# Show the plot
-plt.show()
-
-
-# In[66]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import genextreme as gev
-
-def generate_and_plot_gev_time_series(loc_array_obs, scale_array_obs, shape_array_obs, loc_array_pred, scale_array_pred, shape_array_pred, num_simulations, title):
-    # Combine observed and projected parameters, ensuring no overlap
-    loc_array = np.concatenate((loc_array_obs, loc_array_pred))
-    scale_array = np.concatenate((scale_array_obs, scale_array_pred))
-    shape_array = np.concatenate((shape_array_obs, shape_array_pred))
-    
-    # Determine the number of windows
-    num_windows = len(loc_array)
-
-    # Prepare a matrix to store data for each simulation in each window
-    simulation_data = np.zeros((num_windows, num_simulations))
-
-    # Run simulations and collect data
-    for i in range(num_simulations):
-        for j in range(num_windows):
-            # Generate random data using the GEV distribution with the given parameters
-            random_data = gev.rvs(c=-shape_array[j], loc=loc_array[j], scale=scale_array[j], size=1)[0]
-            # Ensure generated value is >= 0
-            while random_data < 0:
-                random_data = gev.rvs(c=-shape_array[j], loc=loc_array[j], scale=scale_array[j], size=1)[0]
-            simulation_data[j, i] = random_data
-
-    # Calculate the median and 99% CI for each window across all simulations
-    median_flows = np.median(simulation_data, axis=1)
-    confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
-
-    # Plotting the time series of median flows with 99% CI shading
-    plt.figure(figsize=(25, 15))
-    plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
-    plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='black', alpha=0.1, label='99% CI')
-    plt.axvline(x=len(loc_array_obs), color='gray', linestyle='--', label='Transition to Projected GCM Data')
-    plt.title(f"{title} (Median Flows with 99% CI)", fontsize=20)
-    plt.xlabel('Time Window', fontsize=18)
-    plt.ylabel('Flow (m$^3$/s)', fontsize=18)
-    plt.legend()
-    plt.grid(True)
-    
-    # Save the plot as an image
-    plt.savefig("flow.png", bbox_inches='tight')
-    plt.show()
-
-# Assuming Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred are defined elsewhere
-num_simulations = 1000  # Number of simulations to run
-
-# Generate and plot GEV time series data
-generate_and_plot_gev_time_series(Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred, num_simulations, "GEV Model Simulation")
-
-
-# In[67]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import genextreme as gev
-
-# Define a function to generate and plot GEV-based time series data with a 25-year rolling average and a regression line
-def generate_and_plot_gev_time_series(loc_array_obs, scale_array_obs, shape_array_obs, loc_array_pred, scale_array_pred, shape_array_pred, num_data_points, title, total_useage):
-    # Combine observed and projected parameters, ensuring no overlap
-    loc_array = np.concatenate((loc_array_obs, loc_array_pred))
-    scale_array = np.concatenate((scale_array_obs, scale_array_pred))
-    shape_array = np.concatenate((shape_array_obs, shape_array_pred))
-    
-    # Determine the number of windows
-    num_windows = len(loc_array)
-
-    # Prepare arrays to hold time series data
-    time_series_data = []
-
-    # Generate random data for each window
-    for i in range(num_windows):
-        data = np.array([-1])  # Initialize data with a negative value to enter the while loop
-        while np.any(data < 0):
-            # Generate random data using the GEV distribution with the given parameters
-            random_data = gev.rvs(c=-shape_array[i], loc=loc_array[i], scale=scale_array[i], size=num_data_points) - total_useage
-            data = np.maximum(random_data, 0)  # Exclude values less than zero after subtraction
-
-        time_series_data.append(data)
-
-    # Convert the list of data points to a numpy array
-    time_series_data = np.array(time_series_data).flatten()  # Flatten in case num_data_points > 1
-
-    # Compute 25-year rolling average
-    rolling_average = np.convolve(time_series_data, np.ones(25)/25, mode='valid')
-
-    # Compute regression line
-    x_values = np.arange(1, num_windows + 1)
-    regression_coefficients = np.polyfit(x_values, time_series_data, 1)
-    regression_line = np.polyval(regression_coefficients, x_values)
-
-    # Plotting the time series, rolling average, and regression line
-    plt.figure(figsize=(20, 10))
-    plt.plot(x_values, time_series_data, marker='o', linestyle='-', label='Original Data')
-    plt.plot(range(13, num_windows - 11), rolling_average, marker='o', linestyle='-', label='25-Year Rolling Average', color='red')
-    plt.plot(x_values, regression_line, linestyle='--', label='Regression Line', color='green')
-    plt.axvline(x=len(loc_array_obs), color='gray', linestyle='--', label='Transition to Projected GCM Data')
-    plt.title(f"{title} GEV Based Time Series")
-    plt.xlabel('Time Window')
-    plt.ylabel('Flow (cumec)')
-    plt.legend()
-    plt.show()
-
-# Assuming Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred are defined elsewhere
-num_data_points = 1  # Number of data points to generate per window
-
-# Generate and plot GEV time series data
-generate_and_plot_gev_time_series(Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred, num_data_points, "GEV Model Simulation", total_useage)
-
-
-# In[68]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import genextreme as gev
-
-# Define a function to generate and plot GEV-based time series data with median and mean flows
-def generate_and_plot_gev_time_series(loc_array_obs, scale_array_obs, shape_array_obs, loc_array_pred, scale_array_pred, shape_array_pred, num_simulations, title, total_useage):
-    # Combine observed and projected parameters, ensuring no overlap
-    loc_array = np.concatenate((loc_array_obs, loc_array_pred))
-    scale_array = np.concatenate((scale_array_obs, scale_array_pred))
-    shape_array = np.concatenate((shape_array_obs, shape_array_pred))
-
-    # Determine the number of windows
-    num_windows = len(loc_array)
-
-    # Prepare a matrix to store data for each simulation in each window
-    simulation_data = np.zeros((num_windows, num_simulations))
-
-    # Run simulations and collect data
-    for i in range(num_simulations):
-        for j in range(num_windows):
-            # Generate random data using the GEV distribution with the given parameters
-            random_data = gev.rvs(c=-shape_array[j], loc=loc_array[j], scale=scale_array[j], size=None) - total_useage
-            simulation_data[j, i] = np.maximum(0, random_data)
-
-    # Calculate the median and mean for each window across all simulations
-    median_flows = np.median(simulation_data, axis=1)
-    mean_flows = np.mean(simulation_data, axis=1)
-
-    # Plotting the time series of median and mean flows
-    plt.figure(figsize=(12, 6))
-    plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label=f'Median Flows from {num_simulations} simulations')
-    plt.plot(range(1, num_windows + 1), mean_flows, marker='o', linestyle='-', color='r', label=f'Mean Flows from {num_simulations} simulations')
-    plt.axvline(x=len(loc_array_obs), color='gray', linestyle='--', label='Transition to Projected GCM Data')
-    plt.title(f"{title} (Median and Mean Flows)")
-    plt.xlabel('Time Window')
-    plt.ylabel('Flow (cumec)')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-# Assuming Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred are defined elsewhere
-num_simulations = 1000  # Number of simulations to run
-
-# Generate and plot GEV time series data
-generate_and_plot_gev_time_series(Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred, num_simulations, "GEV Model Simulation", total_useage)
-
-
-# In[69]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import genextreme as gev
-import matplotlib.animation as animation
-
-def plot_gev_distributions(loc_array_obs, scale_array_obs, shape_array_obs, loc_array_pred, scale_array_pred, shape_array_pred, num_simulations, total_useage):
-    # Combine observed and projected parameters, ensuring no overlap
-    loc_array = np.concatenate((loc_array_obs, loc_array_pred))
-    scale_array = np.concatenate((scale_array_obs, scale_array_pred))
-    shape_array = np.concatenate((shape_array_obs, shape_array_pred))
-    num_windows = len(loc_array)
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    def animate(window):
-        ax.clear()
-        data = np.array([-1])  # Initialize data with a negative value to enter the while loop
-        while np.any(data < 0):
-            data = gev.rvs(c=-shape_array[window], loc=loc_array[window], scale=scale_array[window], size=num_simulations)
-            data -= total_useage  # Subtract the fixed amount
-            
-            # Exclude values less than zero
-            data = np.maximum(data, 0)
-        
-        # Calculate the 99% confidence interval
-        lower_bound, upper_bound = np.percentile(data, [0.5, 99.5])
-        
-        # Filter the data within the 99% confidence interval
-        data = data[(data >= lower_bound) & (data <= upper_bound)]
-        
-        # Create the histogram
-        counts, bins, patches = ax.hist(data, bins=100, alpha=0.75)
-        
-        # Change the color of bins where the center is less than 2.7 cumec
-        for count, bin_edge, patch in zip(counts, bins, patches):
-            if bin_edge < 2.7:
-                patch.set_facecolor('red')
-            else:
-                patch.set_facecolor('black')
-        
-        ax.set_title(f'Window {window+1}')
-        ax.set_xlabel('Flow (cumec)')
-        ax.set_ylabel('Frequency')
-
-    ani = animation.FuncAnimation(fig, animate, frames=num_windows, repeat=False)
-    
-    # Save the animation as a gif
-    ani.save('gev_distributions_animation.gif', writer='pillow', fps=10)
-
-    plt.show()
-
-# Example setup for GEV parameters (hypothetical values)
-num_simulations = 50000  # Number of simulations to run
-
-# Assuming Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred are defined elsewhere
-
-# Generate and plot GEV distributions based on combined observed and projected parameters
-plot_gev_distributions(Goat_loc_obs, Goat_scale_obs, Goat_shape_obs, Goat_loc_pred, Goat_scale_pred, Goat_shape_pred, num_simulations, total_useage)
-
-
-# In[ ]:
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import genextreme as gev
-from scipy.signal import savgol_filter
-from scipy.stats import t
-
-def calculate_exceedance_probability(loc_array, scale_array, shape_array, num_data_points, num_simulations, threshold, low_flow):
-    num_windows = len(loc_array)
-    exceedances = np.zeros(num_windows, dtype=int)
-
-    for i in range(num_windows):
-        for _ in range(num_simulations):
-            random_data = -1  # Initialize with a negative value to enter the while loop
-            while np.any(random_data < 0):
-                random_data = gev.rvs(c=-shape_array[i], loc=loc_array[i], scale=scale_array[i], size=num_data_points)
-            
-            random_data = np.maximum(0, random_data)  # Ensure non-negative values
-
-            if low_flow == "On":
-                exceedances[i] += np.sum((random_data - total_useage) < threshold)
-            else:
-                exceedances[i] += np.sum(random_data > threshold)
-
-    exceedance_probability = exceedances / (num_data_points * num_simulations)
-    return exceedance_probability
-
-# Function to calculate cumulative exceedance probability
-def calculate_cumulative_probability(probabilities):
-    cumulative_probabilities = []
-    cumulative = 1.0
-    for p in probabilities:
-        cumulative *= (1 - p)
-        cumulative_probabilities.append(1 - cumulative)
-    return np.array(cumulative_probabilities)
-
-
-# Combine observed and projected parameters, ensuring no overlap
-loc_array = np.concatenate((Goat_loc_obs, Goat_loc_pred))
-scale_array = np.concatenate((Goat_scale_obs, Goat_scale_pred))
-shape_array = np.concatenate((Goat_shape_obs, Goat_shape_pred))
-
-# Number of data points to generate for each window and number of simulations
-num_simulations = 1000
-
-# Calculate exceedance probability for combined data
-exceedance_probability = calculate_exceedance_probability(loc_array, scale_array, shape_array, num_data_points, num_simulations, threshold, low_flow)
-
-# Calculate cumulative exceedance probability for combined data
-cumulative_probability = calculate_cumulative_probability(exceedance_probability)
-
-# Calculate the 99% confidence interval for the combined exceedance probability
-confidence_level = 0.99
-degrees_of_freedom = num_simulations - 1
-standard_error = np.std(exceedance_probability) / np.sqrt(num_simulations)
-t_value = t.ppf((1 + confidence_level) / 2, degrees_of_freedom)
-margin_of_error = t_value * standard_error
-lower_bound = exceedance_probability - margin_of_error
-upper_bound = exceedance_probability + margin_of_error
-
-# Plotting the exceedance probabilities and cumulative probabilities with secondary y-axis
-fig, ax1 = plt.subplots(figsize=(20, 10))
-
-# Plotting the exceedance probabilities with confidence intervals on the primary y-axis
-ax1.plot(range(1, len(loc_array) + 1), exceedance_probability, label='Modelled Exceedance Probability', marker='x')
-ax1.fill_between(range(1, len(loc_array) + 1), lower_bound, upper_bound, alpha=0.2, label='99% Confidence Interval')
-ax1.axvline(x=len(Goat_loc_obs), color='gray', linestyle='--', label='Transition to Projected GCM Data')
-ax1.set_xlabel('Time Window')
-ax1.set_ylabel('Exceedance Probability')
-ax1.legend(loc='upper left')
-ax1.grid(True)
-
-# Create a secondary y-axis for cumulative probabilities
-ax2 = ax1.twinx()
-ax2.plot(range(1, len(loc_array) + 1), cumulative_probability, label='Modelled Cumulative Probability', linestyle='--', color='purple')
-ax2.set_ylabel('Cumulative Exceedance Probability')
-ax2.legend(loc='upper right')
-
-plt.title('Exceedance Probability and Cumulative Probability Over Time')
-plt.savefig('exceedance_prob.png')
-plt.show()
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import pearson3
-
-def load_parameters_from_excel(file_path):
-    pe3_params = pd.read_excel(file_path)
-    return pe3_params
-
-def generate_and_plot_pe3_time_series(loc_array, scale_array, shape_array, num_simulations, title, total_usage):
-    # Determine the number of windows
-    num_windows = len(loc_array)
-
-    # Prepare a matrix to store data for each simulation in each window
-    simulation_data = np.zeros((num_windows, num_simulations))
-
-    # Run simulations and collect data
-    for i in range(num_simulations):
-        for j in range(num_windows):
-            # Generate random data using the PE3 distribution with the given parameters
-            random_data = pearson3.rvs(shape_array[j], loc=loc_array[j], scale=scale_array[j], size=1)[0] - total_usage  # Extract single value
-            # Ensure generated value is >= 0
-            while random_data < 0:
-                random_data = pearson3.rvs(shape_array[j], loc=loc_array[j], scale=scale_array[j], size=1)[0] - total_usage
-            simulation_data[j, i] = random_data
-
-    # Calculate the median and 95% CI for each window across all simulations
-    median_flows = np.median(simulation_data, axis=1)
-    confidence_interval = np.percentile(simulation_data, [2.5, 97.5], axis=1)
-
-    # Plotting the time series of median flows with 95% CI shading
-    plt.figure(figsize=(25, 15))
-    plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
-    plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='blue', alpha=0.3, label='95% CI')
-    plt.title(f"{title} (Median Flows with 95% CI)", fontsize=20)
-    plt.xlabel('Time Window', fontsize=18)
-    plt.ylabel('Flow (cumec)', fontsize=18)
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-def plot_pe3_distributions(loc_array, scale_array, shape_array, num_simulations, total_usage):
-    num_windows = len(loc_array)
-    windows_indices = np.arange(0, num_windows, 50)  # Generate indices every 50 windows
-
-    plt.figure(figsize=(25, 10))
-    
-    for idx, window in enumerate(windows_indices):
-        if idx >= 3:  # Limit to plotting 3 windows for illustration
-            break
-        
-        # Generate random data using the PE3 distribution for the specific window
-        data = np.array([-1])  # Initialize data with a negative value to enter the while loop
-        while np.any(data < 0):
-            data = pearson3.rvs(shape_array[window], loc=loc_array[window], scale=scale_array[window], size=num_simulations)
-            data -= total_usage  # Subtract the fixed amount
-            
-            # Exclude values less than zero
-            data = np.maximum(data, 0)
-        
-        plt.subplot(1, 3, idx + 1)
-        plt.hist(data, bins=30, alpha=0.75, color='b')
-        plt.title(f'Window {window+1}-{min(window+50, num_windows)}')  # Adjusted title to show actual window range
-        plt.xlabel('Flow (cumec)')
-        plt.ylabel('Frequency')
-    
-    plt.tight_layout()
-    plt.show()
-
-# Load parameters from the Excel file
-file_path = "GEV_parameters.xlsx"
-pe3_params = load_parameters_from_excel(file_path)
-
-# Extract parameters from the loaded data
-loc_array = pe3_params['Location'].values
-scale_array = pe3_params['Scale'].values
-shape_array = pe3_params['Shape'].values  # Assuming shape is correctly stored
-
-# Set other variables
-num_simulations = 1000  # Number of simulations to run
-total_usage = 0  # Adjust this variable based on your requirement
-
-# Generate and plot PE3 time series data
-generate_and_plot_pe3_time_series(loc_array, scale_array, shape_array, num_simulations, "PE3 Model Simulation", total_usage)
-
-# Generate and plot PE3 distributions
-plot_pe3_distributions(loc_array, scale_array, shape_array, num_simulations, total_usage)
-# In[ ]:
-
-
-import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
 # Data from the image
@@ -5207,10 +3940,8 @@ plt.show()
 
 
 # # For other Distributions using Hokings 2023 R Scirpt. 
-
-# # P3 R Script 
 # Ensure required libraries are installed
-required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl")
+required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl", "lmom")
 
 install_if_missing <- function(package) {
   if (!require(package, character.only = TRUE)) {
@@ -5229,126 +3960,127 @@ setwd(desired_dir)
 current_dir <- getwd()
 print(paste("Current working directory:", current_dir))
 
-# Load the Excel file
-file_path <- file.path(current_dir, "L_moments_and_ratios.xlsx")
-print(paste("Excel file path:", file_path))
+# Load the CSV file
+file_path <- file.path(current_dir, "observed_predicted_l_moments.csv")
+print(paste("CSV file path:", file_path))
 
 # Check if the file exists
 if (!file.exists(file_path)) {
-  stop("The file 'L_moments_and_ratios.xlsx' does not exist in the specified directory.")
+  stop("The file 'observed_predicted_l_moments.csv' does not exist in the specified directory.")
 }
 
-# Read the L-moments and L-moment ratios from the Excel file
-l_moments <- read_excel(file_path, sheet = "L-moments")
-l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
+# Read the observed and predicted L-moments from the CSV file
+print("Reading observed and predicted L-moments from CSV file...")
+lmom_data <- read.csv(file_path)
 
-# Initialize lists to store PE3 parameters
-location <- c()
-scale <- c()
-shape <- c()
+print("Observed and Predicted L-moments head:")
+print(head(lmom_data))
 
-# Compute PE3 parameters for each row (each window)
-for (i in 1:nrow(l_moments)) {
-  sl1 <- l_moments$sl1[i]
-  sl2 <- l_moments$sl2[i]
-  st3 <- l_moment_ratios$st3[i]
-  st4 <- l_moment_ratios$st4[i]  # Assuming st4 is the fourth L-moment ratio
+# Initialize vectors to store GEV parameters for observed and predicted L-moments
+location_obs <- numeric(nrow(lmom_data))
+scale_obs <- numeric(nrow(lmom_data))
+shape_obs <- numeric(nrow(lmom_data))
+location_pred <- numeric(nrow(lmom_data))
+scale_pred <- numeric(nrow(lmom_data))
+shape_pred <- numeric(nrow(lmom_data))
+
+# Compute GEV parameters for each row (each window)
+for (i in 1:nrow(lmom_data)) {
+  # For observed L-moments
+  sl1_obs <- lmom_data$L.moment.1.Observed[i]
+  sl2_obs <- lmom_data$L.moment.2.Observed[i]
+  st3_obs <- lmom_data$L.moment.3.Observed[i]
   
-  PE3_par <- fit_pe3(sl1 = sl1, sl2 = sl2, st3 = st3, st4 = st4)
+  lmoments_obs <- c(sl1_obs, sl2_obs, st3_obs)
+  GEV_par_obs <- pelgev(lmoments_obs)
   
-  location <- c(location, PE3_par[1])
-  scale <- c(scale, PE3_par[2])
-  shape <- c(shape, PE3_par[3])
+  location_obs[i] <- GEV_par_obs[1]
+  scale_obs[i] <- GEV_par_obs[2]
+  shape_obs[i] <- GEV_par_obs[3]
+  
+  # For predicted L-moments
+  sl1_pred <- lmom_data$L.moment.1.Predicted[i]
+  sl2_pred <- lmom_data$L.moment.2.Predicted[i]
+  st3_pred <- lmom_data$L.moment.3.Predicted[i]
+  
+  lmoments_pred <- c(sl1_pred, sl2_pred, st3_pred)
+  GEV_par_pred <- pelgev(lmoments_pred)
+  
+  location_pred[i] <- GEV_par_pred[1]
+  scale_pred[i] <- GEV_par_pred[2]
+  shape_pred[i] <- GEV_par_pred[3]
 }
 
-# Create a data frame with the PE3 parameters
-pe3_params <- data.frame(
-  Window = 1:nrow(l_moments),
-  Location = location,
-  Scale = scale,
-  Shape = shape
+# Create a data frame with the GEV parameters
+gev_params_obs <- data.frame(
+  Window = 1:nrow(lmom_data),
+  Location = location_obs,
+  Scale = scale_obs,
+  Shape = shape_obs
 )
 
-# Save the PE3 parameters to a CSV file
-output_file_csv <- file.path(current_dir, "PE3_parameters.csv")
-print(paste("Output CSV file path:", output_file_csv))
-write.csv(pe3_params, output_file_csv, row.names = FALSE)
-print(paste("CSV file saved to:", output_file_csv))
+gev_params_pred <- data.frame(
+  Window = 1:nrow(lmom_data),
+  Location = location_pred,
+  Scale = scale_pred,
+  Shape = shape_pred
+)
 
-# Save the PE3 parameters to an Excel file (optional)
-output_file_xlsx <- file.path(current_dir, "PE3_parameters.xlsx")
-print(paste("Output Excel file path:", output_file_xlsx))
-write_xlsx(pe3_params, output_file_xlsx)
-print(paste("Excel file saved to:", output_file_xlsx))
+print("Observed GEV Parameters Data Frame:")
+print(head(gev_params_obs))
 
-# Check if the CSV file was saved successfully
-if (file.exists(output_file_csv)) {
-  print("The CSV file was saved successfully.")
-} else {
-  print("There was an error saving the CSV file.")
-}
+print("Predicted GEV Parameters Data Frame:")
+print(head(gev_params_pred))
 
 # Plot the Location parameter
-plot_location <- ggplot(pe3_params, aes(x = Window, y = Location)) +
-  geom_line(color = "blue") +
-  labs(title = "PE3 Location Parameter Across Windows",
+plot_location <- ggplot() +
+  geom_line(data = gev_params_obs, aes(x = Window, y = Location), color = "blue", linetype = "solid", size = 1) +
+  geom_line(data = gev_params_pred, aes(x = Window, y = Location), color = "red", linetype = "dashed", size = 1) +
+  labs(title = "GEV Location Parameter Across Windows",
        x = "Window",
        y = "Location") +
-  theme_minimal()
+  theme_minimal() +
+  theme(text = element_text(size = 16))
+
+# Save the Location parameter plot
+location_plot_file <- file.path(current_dir, "GEV_Location_Parameter.png")
+ggsave(location_plot_file, plot = plot_location)
 
 # Plot the Scale parameter
-plot_scale <- ggplot(pe3_params, aes(x = Window, y = Scale)) +
-  geom_line(color = "red") +
-  labs(title = "PE3 Scale Parameter Across Windows",
+plot_scale <- ggplot() +
+  geom_line(data = gev_params_obs, aes(x = Window, y = Scale), color = "blue", linetype = "solid", size = 1) +
+  geom_line(data = gev_params_pred, aes(x = Window, y = Scale), color = "red", linetype = "dashed", size = 1) +
+  labs(title = "GEV Scale Parameter Across Windows",
        x = "Window",
        y = "Scale") +
-  theme_minimal()
+  theme_minimal() +
+  theme(text = element_text(size = 16))
+
+# Save the Scale parameter plot
+scale_plot_file <- file.path(current_dir, "GEV_Scale_Parameter.png")
+ggsave(scale_plot_file, plot = plot_scale)
 
 # Plot the Shape parameter
-plot_shape <- ggplot(pe3_params, aes(x = Window, y = Shape)) +
-  geom_line(color = "green") +
-  labs(title = "PE3 Shape Parameter Across Windows",
+plot_shape <- ggplot() +
+  geom_line(data = gev_params_obs, aes(x = Window, y = Shape), color = "blue", linetype = "solid", size = 1) +
+  geom_line(data = gev_params_pred, aes(x = Window, y = Shape), color = "red", linetype = "dashed", size = 1) +
+  labs(title = "GEV Shape Parameter Across Windows",
        x = "Window",
        y = "Shape") +
-  theme_minimal()
+  theme_minimal() +
+  theme(text = element_text(size = 16))
+
+# Save the Shape parameter plot
+shape_plot_file <- file.path(current_dir, "GEV_Shape_Parameter.png")
+ggsave(shape_plot_file, plot = plot_shape)
 
 # Print the plots
 print(plot_location)
 print(plot_scale)
 print(plot_shape)
 
-# Function to validate PE3 parameters
-validate_pe3_parameters <- function(pe3_params) {
-  print("Checking for invalid values in PE3 parameters...")
-  invalid_locations <- sum(is.na(pe3_params$Location) | !is.finite(pe3_params$Location))
-  invalid_scales <- sum(is.na(pe3_params$Scale) | !is.finite(pe3_params$Scale) | pe3_params$Scale <= 0)
-  invalid_shapes <- sum(is.na(pe3_params$Shape) | !is.finite(pe3_params$Shape))
-  
-  if (invalid_locations > 0) {
-    print(paste("Invalid location parameters found:", invalid_locations))
-  } else {
-    print("All location parameters are valid.")
-  }
-  
-  if (invalid_scales > 0) {
-    print(paste("Invalid scale parameters found:", invalid_scales))
-  } else {
-    print("All scale p
-)
-  } else {
-    print("All shape parameters are valid.")
-  }
-}
 
-# Validate PE3 parameters
-validate_pe3_parameters(pe3_params)
 
-arameters are valid.")
-  }
-  
-  if (invalid_shapes > 0) {
-    print(paste("Invalid shape parameters found:", invalid_shapes)
-# # GEV R Script 
 # Ensure required libraries are installed
 required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl")
 
@@ -5382,24 +4114,172 @@ if (!file.exists(file_path)) {
 l_moments <- read_excel(file_path, sheet = "L-moments")
 l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
 
-# Initialize lists to store GEV parameters
-location <- c()
-scale <- c()
-shape <- c()
+# Function to compute and save distribution parameters
+compute_and_save_params <- function(distribution_name, fit_function, needs_st4 = TRUE) {
+  location <- c()
+  scale <- c()
+  shape <- c()
+  
+  for (i in 1:nrow(l_moments)) {
+    sl1 <- l_moments$sl1[i]
+    sl2 <- l_moments$sl2[i]
+    st3 <- l_moment_ratios$st3[i]
+    if (needs_st4) {
+      st4 <- l_moment_ratios$st4[i]
+      params <- fit_function(sl1 = sl1, sl2 = sl2, st3 = st3, st4 = st4)
+    } else {
+      params <- fit_function(sl1 = sl1, sl2 = sl2, st3 = st3)
+    }
+    
+    location <- c(location, params[1])
+    scale <- c(scale, params[2])
+    shape <- c(shape, params[3])
+  }
+  
+  params_df <- data.frame(
+    Window = 1:nrow(l_moments),
+    Location = location,
+    Scale = scale,
+    Shape = shape
+  )
+  
+  print(paste("Data frame for", distribution_name, ":", sep = " "))
+  print(head(params_df))
+  
+  output_file_csv <- file.path(current_dir, paste(distribution_name, "_parameters.csv", sep = ""))
+  write.csv(params_df, output_file_csv, row.names = FALSE)
+  print(paste("CSV file saved to:", output_file_csv))
+  
+  output_file_xlsx <- file.path(current_dir, paste(distribution_name, "_parameters.xlsx", sep = ""))
+  write_xlsx(params_df, output_file_xlsx)
+  print(paste("Excel file saved to:", output_file_xlsx))
+  
+  if (file.exists(output_file_csv)) {
+    print(paste("The CSV file for", distribution_name, "was saved successfully."))
+  } else {
+    print(paste("There was an error saving the CSV file for", distribution_name, "."))
+  }
+  
+  # Plot the parameters
+  plot_location <- ggplot(params_df, aes(x = Window, y = Location)) +
+    geom_line(color = "blue") +
+    labs(title = paste(distribution_name, "Location Parameter Across Windows"),
+         x = "Window",
+         y = "Location") +
+    theme_minimal()
+  
+  plot_scale <- ggplot(params_df, aes(x = Window, y = Scale)) +
+    geom_line(color = "red") +
+    labs(title = paste(distribution_name, "Scale Parameter Across Windows"),
+         x = "Window",
+         y = "Scale") +
+    theme_minimal()
+  
+  plot_shape <- ggplot(params_df, aes(x = Window, y = Shape)) +
+    geom_line(color = "green") +
+    labs(title = paste(distribution_name, "Shape Parameter Across Windows"),
+         x = "Window",
+         y = "Shape") +
+    theme_minimal()
+  
+  print(plot_location)
+  print(plot_scale)
+  print(plot_shape)
+}
+
+# Compute and save parameters for GLO distribution
+compute_and_save_params("GLO", fit_glo)
+
+# Compute and save parameters for PE3 distribution
+compute_and_save_params("PE3", fit_pe3)
+
+# Compute and save parameters for GPA distribution
+compute_and_save_params("GPA", fit_gpa)
+
+# Compute and save parameters for GNO distribution
+compute_and_save_params("GNO", fit_gno)
+
+# Ensure required libraries are installed
+required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl")
+
+install_if_missing <- function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  }
+}
+
+lapply(required_packages, install_if_missing)
+
+# Ensure required libraries are installed
+required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl", "lmom")
+
+install_if_missing <- function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  }
+}
+
+lapply(required_packages, install_if_missing)
+
+# Set the working directory
+desired_dir <- "C:\\Users\\Local Admin\\OneDrive - Lower Kootenay Band\\Documents\\workspace_python"
+setwd(desired_dir)
+
+# Verify the working directory
+current_dir <- getwd()
+print(paste("Current working directory:", current_dir))
+
+# Load the Excel file
+file_path <- file.path(current_dir, "L_moments_and_ratios.xlsx")
+print(paste("Excel file path:", file_path))
+
+# Check if the file exists
+if (!file.exists(file_path)) {
+  stop("The file 'L_moments_and_ratios.xlsx' does not exist in the specified directory.")
+}
+
+# Read the L-moments and L-moment ratios from the Excel file
+print("Reading L-moments and L-moment ratios from Excel file...")
+l_moments <- read_excel(file_path, sheet = "L-moments")
+l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
+
+print("L-moments head:")
+print(head(l_moments))
+print("L-moment ratios head:")
+print(head(l_moment_ratios))
+
+# Initialize vectors to store GEV parameters
+location <- numeric(nrow(l_moments))
+scale <- numeric(nrow(l_moments))
+shape <- numeric(nrow(l_moments))
 
 # Compute GEV parameters for each row (each window)
 for (i in 1:nrow(l_moments)) {
   sl1 <- l_moments$sl1[i]
   sl2 <- l_moments$sl2[i]
   st3 <- l_moment_ratios$st3[i]
-  st4 <- l_moment_ratios$st4[i]  # Assuming st4 is the fourth L-moment ratio
   
-  GEV_par <- fit_gev(sl1 = sl1, sl2 = sl2, st3 = st3, st4 = st4)
+  # Calculate GEV parameters using lmom package
+  lmoments <- c(sl1, sl2, st3)
+  GEV_par <- pelgev(lmoments)
   
-  location <- c(location, GEV_par[1])
-  scale <- c(scale, GEV_par[2])
-  shape <- c(shape, GEV_par[3])
+  # Debugging: Print the intermediate values
+  print(paste("Window:", i))
+  print(paste("sl1:", sl1, "sl2:", sl2, "st3:", st3))
+  print(paste("GEV Params:", GEV_par[1], GEV_par[2], GEV_par[3]))
+  
+  location[i] <- GEV_par[1]
+  scale[i] <- GEV_par[2]
+  shape[i] <- GEV_par[3]
 }
+
+# Debugging: Check the lengths of the vectors
+print(paste("Length of location:", length(location)))
+print(paste("Length of scale:", length(scale)))
+print(paste("Length of shape:", length(shape)))
+print(paste("Number of rows in l_moments:", nrow(l_moments)))
 
 # Create a data frame with the GEV parameters
 gev_params <- data.frame(
@@ -5409,14 +4289,23 @@ gev_params <- data.frame(
   Shape = shape
 )
 
+print("GEV Parameters Data Frame:")
+print(head(gev_params))
+
 # Save the GEV parameters to a CSV file
 output_file_csv <- file.path(current_dir, "GEV_parameters.csv")
+if (file.exists(output_file_csv)) {
+  file.remove(output_file_csv)
+}
 print(paste("Output CSV file path:", output_file_csv))
 write.csv(gev_params, output_file_csv, row.names = FALSE)
 print(paste("CSV file saved to:", output_file_csv))
 
 # Save the GEV parameters to an Excel file (optional)
 output_file_xlsx <- file.path(current_dir, "GEV_parameters.xlsx")
+if (file.exists(output_file_xlsx)) {
+  file.remove(output_file_xlsx)
+}
 print(paste("Output Excel file path:", output_file_xlsx))
 write_xlsx(gev_params, output_file_xlsx)
 print(paste("Excel file saved to:", output_file_xlsx))
@@ -5446,118 +4335,9 @@ plot_scale <- ggplot(gev_params, aes(x = Window, y = Scale)) +
 
 # Plot the Shape parameter
 plot_shape <- ggplot(gev_params, aes(x = Window, y = Shape)) +
-  geom_line(color = "gree") +
-  theme_minimal()
-
-# Print the plots
-print(plot_location)
-print(plot_scale)
-print(plot_shape)
-en") +
+  geom_line(color = "green") +
   labs(title = "GEV Shape Parameter Across Windows",
        x = "Window",
-       y = "Shap
-# # GLO R Script 
-# Ensure required libraries are installed
-required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl")
-
-install_if_missing <- function(package) {
-  if (!require(package, character.only = TRUE)) {
-    install.packages(package, dependencies = TRUE)
-    library(package, character.only = TRUE)
-  }
-}
-
-lapply(required_packages, install_if_missing)
-
-# Set the working directory
-desired_dir <- "C:\\Users\\Local Admin\\OneDrive - Lower Kootenay Band\\Documents\\workspace_python"
-setwd(desired_dir)
-
-# Verify the working directory
-current_dir <- getwd()
-print(paste("Current working directory:", current_dir))
-
-# Load the Excel file
-file_path <- file.path(current_dir, "L_moments_and_ratios.xlsx")
-print(paste("Excel file path:", file_path))
-
-# Check if the file exists
-if (!file.exists(file_path)) {
-  stop("The file 'L_moments_and_ratios.xlsx' does not exist in the specified directory.")
-}
-
-# Read the L-moments and L-moment ratios from the Excel file
-l_moments <- read_excel(file_path, sheet = "L-moments")
-l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
-
-# Initialize lists to store GLO parameters
-location <- c()
-scale <- c()
-shape <- c()
-
-# Compute GLO parameters for each row (each window)
-for (i in 1:nrow(l_moments)) {
-  sl1 <- l_moments$sl1[i]
-  sl2 <- l_moments$sl2[i]
-  st3 <- l_moment_ratios$st3[i]
-  st4 <- l_moment_ratios$st4[i]  # Assuming st4 is the fourth L-moment ratio
-  
-  GLO_par <- fit_glo(sl1 = sl1, sl2 = sl2, st3 = st3, st4 = st4)
-  
-  location <- c(location, GLO_par[1])
-  scale <- c(scale, GLO_par[2])
-  shape <- c(shape, GLO_par[3])
-}
-
-# Create a data frame with the GLO parameters
-glo_params <- data.frame(
-  Window = 1:nrow(l_moments),
-  Location = location,
-  Scale = scale,
-  Shape = shape
-)
-
-# Save the GLO parameters to a CSV file
-output_file_csv <- file.path(current_dir, "GLO_parameters.csv")
-print(paste("Output CSV file path:", output_file_csv))
-write.csv(glo_params, output_file_csv, row.names = FALSE)
-print(paste("CSV file saved to:", output_file_csv))
-
-# Save the GLO parameters to an Excel file (optional)
-output_file_xlsx <- file.path(current_dir, "GLO_parameters.xlsx")
-print(paste("Output Excel file path:", output_file_xlsx))
-write_xlsx(glo_params, output_file_xlsx)
-print(paste("Excel file saved to:", output_file_xlsx))
-
-# Check if the CSV file was saved successfully
-if (file.exists(output_file_csv)) {
-  print("The CSV file was saved successfully.")
-} else {
-  print("There was an error saving the CSV file.")
-}
-
-# Plot the Location parameter
-plot_location <- ggplot(glo_params, aes(x = Window, y = Location)) +
-  geom_line(color = "blue") +
-  labs(title = "GLO Location Parameter Across Windows",
-       x = "Window",
-       y = "Location") +
-  theme_minimal()
-
-# Plot the Scale parameter
-plot_scale <- ggplot(glo_params, aes(x = Window, y = Scale)) +
-  geom_line(color = "red") +
-  labs(title = "GLO Scale Parameter Across Windows",
-       x = "Window",
-       y = "Scale") +
-  theme_minimal()
-
-# Plot the Shape parameter
-plot_shape <- ggplot(glo_params, aes(x = Window, y = Shape)) +
-  geom_line(color = "green") +
-  labs(title = "GLO Shape Parameter Across Windows",
-       x = "Window",
        y = "Shape") +
   theme_minimal()
 
@@ -5565,309 +4345,90 @@ plot_shape <- ggplot(glo_params, aes(x = Window, y = Shape)) +
 print(plot_location)
 print(plot_scale)
 print(plot_shape)
-# # GPA R Script 
-# Ensure required libraries are installed
-required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl")
+# In[66]:
 
-install_if_missing <- function(package) {
-  if (!require(package, character.only = TRUE)) {
-    install.packages(package, dependencies = TRUE)
-    library(package, character.only = TRUE)
-  }
-}
 
-lapply(required_packages, install_if_missing)
+transition_window = overlap_length  # Ensure transition_window is defined
 
-# Set the working directory
-desired_dir <- "C:\\Users\\Local Admin\\OneDrive - Lower Kootenay Band\\Documents\\workspace_python"
-setwd(desired_dir)
-
-# Verify the working directory
-current_dir <- getwd()
-print(paste("Current working directory:", current_dir))
-
-# Load the Excel file
-file_path <- file.path(current_dir, "L_moments_and_ratios.xlsx")
-print(paste("Excel file path:", file_path))
-
-# Check if the file exists
-if (!file.exists(file_path)) {
-  stop("The file 'L_moments_and_ratios.xlsx' does not exist in the specified directory.")
-}
-
-# Read the L-moments and L-moment ratios from the Excel file
-l_moments <- read_excel(file_path, sheet = "L-moments")
-l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
-
-# Initialize lists to store GPA parameters
-location <- c()
-scale <- c()
-shape <- c()
-
-# Compute GPA parameters for each row (each window)
-for (i in 1:nrow(l_moments)) {
-  sl1 <- l_moments$sl1[i]
-  sl2 <- l_moments$sl2[i]
-  st3 <- l_moment_ratios$st3[i]
-  st4 <- l_moment_ratios$st4[i]  # Assuming st4 is the fourth L-moment ratio
-  
-  GPA_par <- fit_gpa(sl1 = sl1, sl2 = sl2, st3 = st3, st4 = st4)
-  
-  location <- c(location, GPA_par[1])
-  scale <- c(scale, GPA_par[2])
-  shape <- c(shape, GPA_par[3])
-}
-
-# Create a data frame with the GPA parameters
-gpa_params <- data.frame(
-  Window = 1:nrow(l_moments),
-  Location = location,
-  Scale = scale,
-  Shape = shape
-)
-
-# Save the GPA parameters to a CSV file
-output_file_csv <- file.path(current_dir, "GPA_parameters.csv")
-print(paste("Output CSV file path:", output_file_csv))
-write.csv(gpa_params, output_file_csv, row.names = FALSE)
-print(paste("CSV file saved to:", output_file_csv))
-
-# Save the GPA parameters to an Excel file (optional)
-output_file_xlsx <- file.path(current_dir, "GPA_parameters.xlsx")
-print(paste("Output Excel file path:", output_file_xlsx))
-write_xlsx(gpa_params, output_file_xlsx)
-print(paste("Excel file saved to:", output_file_xlsx))
-
-# Check if the CSV file was saved successfully
-if (file.exists(output_file_csv)) {
-  print("The CSV file was saved successfully.")
-} else {
-  print("There was an error saving the CSV file.")
-}
-
-# Plot the Location parameter
-plot_location <- ggplot(gpa_params, aes(x = Window, y = Location)) +
-  geom_line(color = "blue") +
-  labs(title = "GPA Location Parameter Across Windows",
-       x = "Window",
-       y = "Location") +
-  theme_minimal()
-
-# Plot the Scale parameter
-plot_scale <- ggplot(gpa_params, aes(x = Window, y = Scale)) +
-  geom_line(color = "red") +
-  labs(title = "GPA Scale Parameter Across Windows",
-       x = "Window",
-       y = "Scale") +
-  theme_minimal()
-
-# Plot the Shape parameter
-plot_shape <- ggplot(gpa_params, aes(x = Window, y = Shape)) +
-  geom_line(color = "green") +
-  labs(title = "GPA Shape Parameter Across Windows",
-       x = "Window",
-       y = "Shape") +
-  theme_minimal()
-
-# Print the plots
-print(plot_location)
-print(plot_scale)
-print(plot_shape)
-
-# Function to validate GPA parameters
-validate_gpa_parameters <- function(gpa_params) {
-  print("Checking for invalid values in GPA parameters...")
-  invalid_locations <- sum(is.na(gpa_params$Location) | !is.finite(gpa_params$Location))
-  invalid_scales <- sum(is.na(gpa_params$Scale) | !is.finite(gpa_params$Scale) | gpa_params$Scale <= 0)
-  invalid_shapes <- sum(is.na(gpa_params$Shape) | !is.finite(gpa_params$Shape))
-  
-  if (invalid_locations > 0) {
-    print(paste("Invalid location parameters found:", invalid_locations))
-  } else {
-    print("All location parameters are valid.")
-  }
-  
-  if (invalid_scales > 0) {
-    print(paste("Invalid scale parameters found:", invalid_scales))
-  } else {
-    print("All scale ))
-parameters are valid.")
-  }
-  
-  if (invalid_shapes > 0) {
-    print(paste("Invalid shape parameters found:", invalid_shapes  } else {
-    print("All shape parameters are valid.")
-  }
-}
-
-# Validate GPA parameters
-validate_gpa_parameters(gpa_params)
-# # GNO R Script
-library(LMoFit)
-library(readxl)
-library(ggplot2)
-library(writexl)
-
-# Set the working directory
-desired_dir <- "C:\\Users\\Local Admin\\OneDrive - Lower Kootenay Band\\Documents\\workspace_python"
-setwd(desired_dir)
-
-# Verify the working directory
-current_dir <- getwd()
-print(paste("Current working directory:", current_dir))
-
-# Load the Excel file
-file_path <- file.path(current_dir, "L_moments_and_ratios.xlsx")
-print(paste("Excel file path:", file_path))
-
-# Check if the file exists
-if (!file.exists(file_path)) {
-  stop("The file 'L_moments_and_ratios.xlsx' does not exist in the specified directory.")
-}
-
-# Read the L-moments and L-moment ratios from the Excel file
-l_moments <- read_excel(file_path, sheet = "L-moments")
-l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
-
-# Initialize lists to store GNO parameters
-location <- c()
-scale <- c()
-shape <- c()
-
-# Compute GNO parameters for each row (each window)
-for (i in 1:nrow(l_moments)) {
-  sl1 <- l_moments$sl1[i]
-  sl2 <- l_moments$sl2[i]
-  st3 <- l_moment_ratios$st3[i]
-  st4 <- l_moment_ratios$st4[i]  # Assuming st4 is the fourth L-moment ratio
-  
-  GNO_par <- fit_gno(sl1 = sl1, sl2 = sl2, st3 = st3, st4 = st4)
-  
-  location <- c(location, GNO_par[1])
-  scale <- c(scale, GNO_par[2])
-  shape <- c(shape, GNO_par[3])
-}
-
-# Create a data frame with the GNO parameters
-gno_params <- data.frame(
-  Window = 1:nrow(l_moments),
-  Location = location,
-  Scale = scale,
-  Shape = shape
-)
-
-# Save the GNO parameters to an Excel file
-output_file <- file.path(current_dir, "GNO_parameters.xlsx")
-print(paste("Output file path:", output_file))
-write_xlsx(gno_params, output_file)
-print(paste("File saved to:", output_file))
-
-# Check if the file was saved successfully
-if (file.exists(output_file)) {
-  print("The file was saved successfully.")
-} else {
-  print("There was an error saving the file.")
-}
-
-# Plot the Location parameter
-plot_location <- ggplot(gno_params, aes(x = Window, y = Location)) +
-  geom_line(color = "blue") +
-  labs(title = "GNO Location Parameter Across Windows",
-       x = "Window",
-       y = "Location") +
-  theme_minimal()
-
-# Plot the Scale parameter
-plot_scale <- ggplot(gno_params, aes(x = Window, y = Scale)) +
-  geom_line(color = "red") +
-  labs(title = "GNO Scale Parameter Across Windows",
-       x = "Window",
-       y = "Scale") +
-  theme_minimal()
-
-# Plot the Shape parameter
-plot_shape <- ggplot(gno_params, aes(x = Window, y = Shape)) +
-  geom_line(color = "green") +
-  labs(title = "GNO Shape Parameter Across Windows",
-       x = "Window",
-       y = "Shape") +
-  theme_minimal()
-
-# Print the plots
-print(plot_location)
-print(plot_scale)
-print(plot_shape)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import pearson3 as pe3
-
-# Load the PE3 parameters from a CSV file
-def load_parameters(working_dir):
-    file_path = f"{working_dir}/PE3_parameters.csv"
-    return pd.read_csv(file_path)
-
-# Set the working directory
-desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
-
-# Load parameters for PE3 distribution
-params_pe3 = load_parameters(desired_dir)
-
-# Number of simulations
-num_simulations = 1000
-
-# Initialize arrays to store simulation results
-num_windows = len(params_pe3)
-simulation_data = np.zeros((num_windows, num_simulations))
-
-# Simulate flows using the PE3 distribution for each window
-for j in range(num_windows):
-    location, scale, shape = params_pe3.loc[j, ['Location', 'Scale', 'Shape']]
-    
-    # Validate parameters
-    if scale <= 0:
-        raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
-    
-    for i in range(num_simulations):
-        random_data = pe3.rvs(skew=shape, loc=location, scale=scale, size=1)[0]
-        
-        # Ensure generated value is >= 0
-        while random_data < 0:
-            random_data = pe3.rvs(skew=shape, loc=location, scale=scale, size=1)[0]
-        
-        simulation_data[j, i] = random_data
-
-# Calculate median flows and 99% CI
-median_flows = np.median(simulation_data, axis=1)
-confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
-
-# Plotting the median flows and 99% CI
-plt.figure(figsize=(20, 10))
-plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
-plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
-plt.title('Median Flow with 99% Confidence Interval Using PE3 Distribution', fontsize=20)
-plt.xlabel('Time Window', fontsize=18)
-plt.ylabel('Flow', fontsize=18)
-plt.legend()
-plt.grid(True)
-
-# Save the plot as an image
-plt.savefig(f"{desired_dir}/pe3_flow.png", bbox_inches='tight')
-plt.show()import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import genextreme as gev
 
 # Load the GEV parameters from a CSV file
-def load_parameters(working_dir):
-    file_path = f"{working_dir}/GEV_parameters.csv"
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
     return pd.read_csv(file_path)
 
 # Set the working directory
 desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
 
 # Load parameters for GEV distribution
-params_gev = load_parameters(desired_dir)
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+
+# Extract the parameters
+loc_array = params_gev['Location']
+scale_array = params_gev['Scale']
+shape_array = params_gev['Shape']  # Do not invert the shape parameter
+
+# Plotting the parameters
+fig, axs = plt.subplots(3, 1, figsize=(20, 15))
+
+# Increase font sizes
+font_size = 16
+plt.rcParams.update({'font.size': font_size})
+
+# Plot location parameters
+axs[0].plot(range(1, len(loc_array) + 1), loc_array, marker='x', linestyle='-', color='b')
+axs[0].axvline(transition_window, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+axs[0].set_title('GEV Location Parameter', fontsize=font_size + 4)
+axs[0].set_xlabel('Time Window', fontsize=font_size)
+axs[0].set_ylabel('Location', fontsize=font_size)
+axs[0].legend(fontsize=font_size)
+
+# Plot scale parameters
+axs[1].plot(range(1, len(scale_array) + 1), scale_array, marker='x', linestyle='-', color='b')
+axs[1].axvline(transition_window, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+axs[1].set_title('GEV Scale Parameter', fontsize=font_size + 4)
+axs[1].set_xlabel('Time Window', fontsize=font_size)
+axs[1].set_ylabel('Scale', fontsize=font_size)
+axs[1].legend(fontsize=font_size)
+
+# Plot shape parameters
+axs[2].plot(range(1, len(shape_array) + 1), shape_array, marker='x', linestyle='-', color='b')
+axs[2].axvline(transition_window, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+axs[2].set_title('GEV Shape Parameter', fontsize=font_size + 4)
+axs[2].set_xlabel('Time Window', fontsize=font_size)
+axs[2].set_ylabel('Shape', fontsize=font_size)
+axs[2].legend(fontsize=font_size)
+
+# Adjust spacing between subplots
+plt.tight_layout()
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/GEV_parameter_distribution.png", bbox_inches='tight')
+plt.show()
+
+
+# In[67]:
+
+
+transition_window = overlap_length  # Ensure transition_window is defined
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genextreme as gev
+
+# Load the GEV parameters from a CSV file
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GEV distributions
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
 
 # Number of simulations
 num_simulations = 1000
@@ -5876,21 +4437,23 @@ num_simulations = 1000
 num_windows = len(params_gev)
 simulation_data = np.zeros((num_windows, num_simulations))
 
-# Simulate flows using the GEV distribution for each window
+# Simulate flows using GEV for all windows
 for j in range(num_windows):
+    # Use GEV distribution
     location, scale, shape = params_gev.loc[j, ['Location', 'Scale', 'Shape']]
-    
+    c = -shape  # Note: shape parameter for genextreme is -k
+
     # Validate parameters
     if scale <= 0:
         raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
-    
+
     for i in range(num_simulations):
-        random_data = gev.rvs(c=-shape, loc=location, scale=scale, size=1)[0]
-        
+        random_data = gev.rvs(c=c, loc=location, scale=scale, size=1)[0]
+
         # Ensure generated value is >= 0
         while random_data < 0:
-            random_data = gev.rvs(c=-shape, loc=location, scale=scale, size=1)[0]
-        
+            random_data = gev.rvs(c=c, loc=location, scale=scale, size=1)[0]
+
         simulation_data[j, i] = random_data
 
 # Calculate median flows and 99% CI
@@ -5901,6 +4464,7 @@ confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
 plt.figure(figsize=(20, 10))
 plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
 plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
+plt.axvline(x=61, color='red', linestyle='--', label='Transition to Projected GCM Data')
 plt.title('Median Flow with 99% Confidence Interval Using GEV Distribution', fontsize=20)
 plt.xlabel('Time Window', fontsize=18)
 plt.ylabel('Flow', fontsize=18)
@@ -5908,160 +4472,231 @@ plt.legend()
 plt.grid(True)
 
 # Save the plot as an image
-plt.savefig(f"{desired_dir}/gev_flow.png", bbox_inches='tight')
+plt.savefig(f"{desired_dir}/flow_simulation_gev.png", bbox_inches='tight')
 plt.show()
+
+
+# In[68]:
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import glob
+
+# Load parameters from CSV files for each distribution
+def load_parameters(file):
+    return pd.read_csv(file)
+
+# Combine parameters and correct the PE3 scale and shape
+def combine_params(file, dist):
+    params_df = load_parameters(file)
+    
+    loc_params = params_df['Location']
+    scale_params = params_df['Scale']
+    shape_params = params_df['Shape']
+    
+    # Invert scale and shape for PE3
+    if dist == 'PE3':
+        scale_params = -scale_params
+        shape_params = -shape_params
+    
+    return loc_params, scale_params, shape_params
+
+# Function to determine line style based on filename
+def get_line_style(file):
+    if 'RCP45' in file:
+        return '-'
+    elif 'RCP85' in file:
+        return '--'
+    else:
+        return '-.'
+
+# Parameters
+distributions = ['GEV', 'GLO', 'GNO', 'PE3', 'GPA']
+params_files = {
+    'GEV': 'GEV_parameters.csv',
+    'GLO': 'GLO_parameters.csv',
+    'GNO': 'GNO_parameters.csv',
+    'PE3': 'PE3_parameters.csv',
+    'GPA': 'GPA_parameters.csv'
+}
+
+rcp_scenario = 'RCP85' if rcp_85 == 'On' else 'RCP45'
+gcm_model = 'GCM1'  # Replace with actual GCM model variable
+
+# Define the transition period (overlap length)
+overlap_length 
+
+# Process and save combined parameters for each distribution
+for dist in distributions:
+    file = params_files[dist]
+    loc_params, scale_params, shape_params = combine_params(file, dist)
+    
+    combined_params_df = pd.DataFrame({
+        'Location': loc_params,
+        'Scale': scale_params,
+        'Shape': shape_params
+    })
+    combined_filename = f'{dist}_parameters_Window_{window_size}_{gcm_model}_{rcp_scenario}.csv'
+    combined_params_df.to_csv(combined_filename, index=False)
+
+# Load all combined CSV files
+csv_files = glob.glob('*_parameters_Window_*.csv')
+
+# Create subplots for each parameter
+fig, axs = plt.subplots(len(distributions), 3, figsize=(18, 6 * len(distributions)))  # Adjust height based on number of distributions
+
+# Plot each combined file
+legend_handles = []
+legend_labels = []
+
+for file in csv_files:
+    parts = file.split('_')
+    dist = parts[0]
+    window_size = parts[-3]
+    gcm_model = parts[-2]
+    rcp_scenario = parts[-1].split('.')[0]
+    
+    # Check if dist is in the distributions list
+    if dist not in distributions:
+        continue
+    
+    combined_params_df = pd.read_csv(file)
+    combined_loc_params = combined_params_df['Location']
+    combined_scale_params = combined_params_df['Scale']
+    combined_shape_params = combined_params_df['Shape']
+    
+    line_style = get_line_style(file)
+    
+    dist_index = distributions.index(dist)
+    
+    # Plot location parameters
+    handle, = axs[dist_index, 0].plot(combined_loc_params, line_style, label=f'Window {window_size}, {rcp_scenario}')
+    if f'Window {window_size}, {rcp_scenario}' not in legend_labels:
+        legend_handles.append(handle)
+        legend_labels.append(f'Window {window_size}, {rcp_scenario}')
+    
+    # Plot scale parameters
+    axs[dist_index, 1].plot(combined_scale_params, line_style)
+    
+    # Plot shape parameters
+    axs[dist_index, 2].plot(combined_shape_params, line_style)
+
+for dist_index in range(len(distributions)):
+    for ax in axs[dist_index]:
+        ax.axvline(x=overlap_length, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+
+# Set titles and labels
+for dist_index, dist in enumerate(distributions):
+    axs[dist_index, 0].set_title(f'{dist} Location Parameter')
+    axs[dist_index, 0].set_xlabel('Time Window')
+    axs[dist_index, 0].set_ylabel('Location')
+
+    axs[dist_index, 1].set_title(f'{dist} Scale Parameter')
+    axs[dist_index, 1].set_xlabel('Time Window')
+    axs[dist_index, 1].set_ylabel('Scale')
+
+    axs[dist_index, 2].set_title(f'{dist} Shape Parameter')
+    axs[dist_index, 2].set_xlabel('Time Window')
+    axs[dist_index, 2].set_ylabel('Shape')
+
+# Adjust spacing between subplots
+plt.tight_layout()
+
+# Add a single legend for all subplots
+fig.legend(legend_handles, legend_labels, loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+# Save the plot as a PNG file
+plt.savefig('sensitivity.png', bbox_inches='tight')
+
+# Show the plot
+plt.show()
+
+
+# In[69]:
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import genlogistic as glo
-
-# Load the GLO parameters from a CSV file
-def load_parameters(working_dir):
-    file_path = f"{working_dir}/GLO_parameters.csv"
-    return pd.read_csv(file_path)
-
-# Set the working directory
-desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
-
-# Load parameters for GLO distribution
-params_glo = load_parameters(desired_dir)
-
-# Number of simulations
-num_simulations = 1000
-
-# Initialize arrays to store simulation results
-num_windows = len(params_glo)
-simulation_data = np.zeros((num_windows, num_simulations))
-
-# Simulate flows using the GLO distribution for each window
-for j in range(num_windows):
-    location, scale, shape = params_glo.loc[j, ['Location', 'Scale', 'Shape']]
-    
-    # Validate parameters
-    if scale <= 0:
-        raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
-    
-    for i in range(num_simulations):
-        random_data = glo.rvs(c=-shape, loc=location, scale=scale, size=1)[0]
-        
-        # Ensure generated value is >= 0
-        while random_data < 0:
-            random_data = glo.rvs(c=-shape, loc=location, scale=scale, size=1)[0]
-        
-        simulation_data[j, i] = random_data
-
-# Calculate median flows and 99% CI
-median_flows = np.median(simulation_data, axis=1)
-confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
-
-# Plotting the median flows and 99% CI
-plt.figure(figsize=(20, 10))
-plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
-plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
-plt.title('Median Flow with 99% Confidence Interval Using GLO Distribution', fontsize=20)
-plt.xlabel('Time Window', fontsize=18)
-plt.ylabel('Flow', fontsize=18)
-plt.legend()
-plt.grid(True)
-
-# Save the plot as an image
-plt.savefig(f"{desired_dir}/glo_flow.png", bbox_inches='tight')
-plt.show()
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import norm as gno
-
-# Load the GNO parameters from a CSV file
-def load_parameters(working_dir):
-    file_path = f"{working_dir}/GNO_parameters.csv"
-    return pd.read_csv(file_path)
-
-# Set the working directory
-desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
-
-# Load parameters for GNO distribution
-params_gno = load_parameters(desired_dir)
-
-# Number of simulations
-num_simulations = 1000
-
-# Initialize arrays to store simulation results
-num_windows = len(params_gno)
-simulation_data = np.zeros((num_windows, num_simulations))
-
-# Simulate flows using the GNO distribution for each window
-for j in range(num_windows):
-    location, scale, shape = params_gno.loc[j, ['Location', 'Scale', 'Shape']]
-    
-    # Validate parameters
-    if scale <= 0:
-        raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
-    
-    for i in range(num_simulations):
-        random_data = gno.rvs(loc=location, scale=scale, size=1)[0]
-        
-        # Ensure generated value is >= 0
-        while random_data < 0:
-            random_data = gno.rvs(loc=location, scale=scale, size=1)[0]
-        
-        simulation_data[j, i] = random_data
-
-# Calculate median flows and 99% CI
-median_flows = np.median(simulation_data, axis=1)
-confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
-
-# Plotting the median flows and 99% CI
-plt.figure(figsize=(20, 10))
-plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
-plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
-plt.title('Median Flow with 99% Confidence Interval Using GNO Distribution', fontsize=20)
-plt.xlabel('Time Window', fontsize=18)
-plt.ylabel('Flow', fontsize=18)
-plt.legend()
-plt.grid(True)
-
-# Save the plot as an image
-plt.savefig(f"{desired_dir}/gno_flow.png", bbox_inches='tight')
-plt.show()
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+from scipy.stats import genextreme as gev
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
 from scipy.stats import genpareto as gpa
 
-# Load the GPA parameters from a CSV file
-def load_parameters(working_dir):
-    file_path = f"{working_dir}/GPA_parameters.csv"
+# Load the GLO, GEV, GNO, PE3, and GPA parameters from CSV files
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
     return pd.read_csv(file_path)
 
 # Set the working directory
 desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
 
-# Load parameters for GPA distribution
-params_gpa = load_parameters(desired_dir)
+# Load parameters for GLO, GEV, GNO, PE3, and GPA distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+params_gpa = load_parameters(desired_dir, 'GPA_parameters.csv')
+
+# Define colors for each distribution
+distribution_colors = {
+    'GEV': 'blue',
+    'GLO': 'green',
+    'GNO': 'orange',
+    'PE3': 'red',
+    'GPA': 'purple'
+}
 
 # Number of simulations
 num_simulations = 1000
 
 # Initialize arrays to store simulation results
-num_windows = len(params_gpa)
+num_windows = len(closest_distributions)
 simulation_data = np.zeros((num_windows, num_simulations))
 
-# Simulate flows using the GPA distribution for each window
+# Simulate flows using the best-fit distribution for each window
 for j in range(num_windows):
-    location, scale, shape = params_gpa.loc[j, ['Location', 'Scale', 'Shape']]
-    
+    dist_name = closest_distributions[j]
+    if dist_name == 'GEV':
+        params = params_gev.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], -params['Shape']
+        dist = gev
+    elif dist_name == 'GLO':
+        params = params_glo.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], -params['Shape']
+        dist = glo
+    elif dist_name == 'GNO':
+        params = params_gno.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = gno
+    elif dist_name == 'PE3':
+        params = params_pe3.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = pe3
+    elif dist_name == 'GPA':
+        params = params_gpa.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = gpa
+
     # Validate parameters
     if scale <= 0:
         raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
-    
+
     for i in range(num_simulations):
-        random_data = gpa.rvs(c=shape, loc=location, scale=scale, size=1)[0]
-        
+        if dist_name in ['GEV', 'GLO', 'GNO', 'GPA']:
+            random_data = dist.rvs(shape, loc=location, scale=scale, size=1)[0]
+        else:
+            random_data = dist.rvs(loc=location, scale=scale, skew=shape, size=1)[0]
+
         # Ensure generated value is >= 0
         while random_data < 0:
-            random_data = gpa.rvs(c=shape, loc=location, scale=scale, size=1)[0]
-        
+            if dist_name in ['GEV', 'GLO', 'GNO', 'GPA']:
+                random_data = dist.rvs(shape, loc=location, scale=scale, size=1)[0]
+            else:
+                random_data = dist.rvs(loc=location, scale=scale, skew=shape, size=1)[0]
+
         simulation_data[j, i] = random_data
 
 # Calculate median flows and 99% CI
@@ -6070,14 +4705,927 @@ confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
 
 # Plotting the median flows and 99% CI
 plt.figure(figsize=(20, 10))
-plt.plot(range(1, num_windows + 1), median_flows, marker='o', linestyle='-', color='b', label='Median Flow')
+for dist_name in np.unique(closest_distributions):
+    indices = [i for i, x in enumerate(closest_distributions) if x == dist_name]
+    plt.scatter(np.array(indices) + 1, median_flows[indices], color=distribution_colors[dist_name], label=f'Median Flow ({dist_name})')
+
 plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
-plt.title('Median Flow with 99% Confidence Interval Using GPA Distribution', fontsize=20)
+
+# Adding transition lines for each distribution change
+prev_dist = closest_distributions[0]
+for i in range(1, num_windows):
+    current_dist = closest_distributions[i]
+    if current_dist != prev_dist:
+        plt.axvline(x=i + 1, color='black', linestyle='--', alpha=0.2)
+        prev_dist = current_dist
+
+# Adding the transition to projected data line
+plt.axvline(transition_window, color='red', linestyle='--', label='Transition to Projected Data')
+
+# Adding unique legends for distributions
+handles, labels = plt.gca().get_legend_handles_labels()
+by_label = dict(zip(labels, handles))
+plt.legend(by_label.values(), by_label.keys(), loc='center left', bbox_to_anchor=(1, 0.5))
+
+plt.title('Median Flow with 99% Confidence Interval Using Best-Fit Distributions', fontsize=20)
 plt.xlabel('Time Window', fontsize=18)
-plt.ylabel('Flow', fontsize=18)
+plt.ylabel('Flow (m³/s)', fontsize=18)
+plt.grid(True)
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/flow_simulation.png", bbox_inches='tight')
+plt.show()
+
+# Store the transition window
+transition_window = overlap_length
+print(f'Transition to projected data occurs at window: {transition_window}')
+
+
+# In[70]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genextreme as gev
+
+# Function to load the parameters
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GEV distributions
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+
+# Initialize arrays to store simulation results
+num_windows = len(params_gev)
+num_simulations = 1000
+
+simulation_data = np.zeros((num_windows, num_simulations))
+
+# Simulate flows using GEV for all windows
+for j in range(num_windows):
+    location, scale, shape = params_gev.loc[j, ['Location', 'Scale', 'Shape']]
+    c = -shape  # Note: shape parameter for genextreme is -k
+    
+    for i in range(num_simulations):
+        random_data = gev.rvs(c=c, loc=location, scale=scale, size=num_data_points)
+        random_data = np.maximum(0, random_data)  # Ensure non-negative values
+
+        if low_flow == "On":
+            exceedance_counts = np.sum(random_data < threshold)
+        else:
+            exceedance_counts = np.sum(random_data > threshold)
+        
+        simulation_data[j, i] = exceedance_counts / num_data_points
+
+# Calculate exceedance probability
+exceedance_probabilities = np.mean(simulation_data, axis=1)
+
+# Calculate cumulative exceedance probability
+cumulative_probabilities = []
+cumulative = 1.0
+for p in exceedance_probabilities:
+    cumulative *= (1 - p)
+    cumulative_probabilities.append(1 - cumulative)
+cumulative_probabilities = np.array(cumulative_probabilities)
+
+
+# Plotting the exceedance and cumulative probabilities
+fig, ax1 = plt.subplots(figsize=(20, 10))
+
+# Plot exceedance probabilities on the primary y-axis
+ax1.plot(range(1, num_windows + 1), exceedance_probabilities, label='Modelled Exceedance Probability', marker='x', color='blue')
+ax1.axvline(x=transition_window, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+ax1.set_xlabel('Time Window', fontsize=18)
+ax1.set_ylabel('Exceedance Probability', fontsize=18)
+ax1.legend(loc='upper left')
+ax1.grid(True)
+
+# Create a secondary y-axis for cumulative probabilities
+ax2 = ax1.twinx()
+ax2.plot(range(1, num_windows + 1), cumulative_probabilities, label='Modelled Cumulative Probability', linestyle='--', color='purple')
+ax2.set_ylabel('Cumulative Exceedance Probability', fontsize=18)
+ax2.legend(loc='upper right')
+
+plt.title('Exceedance Probability and Cumulative Probability Over Time', fontsize=20)
+plt.grid(True)
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/probabilities.png", bbox_inches='tight')
+plt.show()
+
+
+# In[72]:
+
+
+transition_window = overlap_length
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genlogistic as glo
+from scipy.stats import genextreme as gev
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
+from scipy.stats import genpareto as gpa
+
+# Load the GLO, GEV, GNO, PE3, and GPA parameters from CSV files
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GLO, GEV, GNO, PE3, and GPA distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+params_gpa = load_parameters(desired_dir, 'GPA_parameters.csv')
+
+# Define colors for each distribution
+distribution_colors = {
+    'GEV': 'blue',
+    'GLO': 'green',
+    'GNO': 'orange',
+    'PE3': 'red',
+    'GPA': 'purple'
+}
+
+# Number of windows
+num_windows = len(closest_distributions)
+
+# Initialize arrays to store parameter values
+location_params = np.zeros(num_windows)
+scale_params = np.zeros(num_windows)
+shape_params = np.zeros(num_windows)
+
+# Extract parameters for each window
+for j in range(num_windows):
+    dist_name = closest_distributions[j]
+    if dist_name == 'GEV':
+        params = params_gev.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        shape = -shape  # Invert shape parameter for GEV
+    elif dist_name == 'GLO':
+        params = params_glo.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        shape = -shape  # Invert shape parameter for GLO
+    elif dist_name == 'GNO':
+        params = params_gno.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+    elif dist_name == 'PE3':
+        params = params_pe3.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+    elif dist_name == 'GPA':
+        params = params_gpa.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+
+    # Store the parameter values
+    location_params[j] = location
+    scale_params[j] = scale
+    shape_params[j] = shape
+
+# Create subplots for each parameter
+fig, axs = plt.subplots(3, 1, figsize=(20, 15))
+
+# Plot location parameters
+for dist_name in np.unique(closest_distributions):
+    indices = [i for i, x in enumerate(closest_distributions) if x == dist_name]
+    axs[0].scatter(np.array(indices) + 1, location_params[indices], color=distribution_colors[dist_name], label=f'Location ({dist_name})')
+axs[0].axvline(transition_window, color='black', linestyle='-', alpha=0.7, label='Transition to Projected Data')
+axs[0].set_title('Location Parameter')
+axs[0].set_xlabel('Time Window')
+axs[0].set_ylabel('Location')
+axs[0].legend()
+axs[0].grid(True)
+
+# Plot scale parameters
+for dist_name in np.unique(closest_distributions):
+    indices = [i for i, x in enumerate(closest_distributions) if x == dist_name]
+    axs[1].scatter(np.array(indices) + 1, scale_params[indices], color=distribution_colors[dist_name], label=f'Scale ({dist_name})')
+axs[1].axvline(transition_window, color='black', linestyle='-', alpha=0.7, label='Transition to Projected Data')
+axs[1].set_title('Scale Parameter')
+axs[1].set_xlabel('Time Window')
+axs[1].set_ylabel('Scale')
+axs[1].legend()
+axs[1].grid(True)
+
+# Plot shape parameters
+for dist_name in np.unique(closest_distributions):
+    indices = [i for i, x in enumerate(closest_distributions) if x == dist_name]
+    axs[2].scatter(np.array(indices) + 1, shape_params[indices], color=distribution_colors[dist_name], label=f'Shape ({dist_name})')
+axs[2].axvline(transition_window, color='black', linestyle='-', alpha=0.7, label='Transition to Projected Data')
+axs[2].set_title('Shape Parameter')
+axs[2].set_xlabel('Time Window')
+axs[2].set_ylabel('Shape')
+axs[2].legend()
+axs[2].grid(True)
+
+# Adjust spacing between subplots
+plt.tight_layout()
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/parameter_distribution.png", bbox_inches='tight')
+plt.show()
+
+# Store the transition window
+transition_window = overlap_length
+print(f'Transition to projected data occurs at window: {transition_window}')
+
+
+# In[73]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genlogistic as glo
+from scipy.stats import genextreme as gev
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
+from scipy.stats import genpareto as gpa
+
+# Load the GLO, GEV, GNO, PE3, and GPA parameters from CSV files
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GLO, GEV, GNO, PE3, and GPA distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+params_gpa = load_parameters(desired_dir, 'GPA_parameters.csv')
+
+# Define colors for each distribution
+distribution_colors = {
+    'GEV': 'blue',
+    'GLO': 'green',
+    'GNO': 'orange',
+    'PE3': 'red',
+    'GPA': 'purple'
+}
+
+# Number of simulations
+num_simulations = 1000
+
+# Initialize arrays to store simulation results
+num_windows = len(closest_distributions)
+simulation_data = np.zeros((num_windows, num_simulations))
+
+# Simulate flows using the best-fit distribution for each window
+for j in range(num_windows):
+    dist_name = closest_distributions[j]
+    if dist_name == 'GEV':
+        params = params_gev.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], -params['Shape']
+        dist = gev
+    elif dist_name == 'GLO':
+        params = params_glo.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], -params['Shape']
+        dist = glo
+    elif dist_name == 'GNO':
+        params = params_gno.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = gno
+    elif dist_name == 'PE3':
+        params = params_pe3.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = pe3
+    elif dist_name == 'GPA':
+        params = params_gpa.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = gpa
+
+    # Validate parameters
+    if scale <= 0:
+        raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
+
+    for i in range(num_simulations):
+        if dist_name in ['GEV', 'GLO', 'GNO', 'GPA']:
+            random_data = dist.rvs(shape, loc=location, scale=scale, size=1)[0]
+        else:
+            random_data = dist.rvs(loc=location, scale=scale, skew=shape, size=1)[0]
+
+        # Ensure generated value is >= 0
+        while random_data < 0:
+            if dist_name in ['GEV', 'GLO', 'GNO', 'GPA']:
+                random_data = dist.rvs(shape, loc=location, scale=scale, size=1)[0]
+            else:
+                random_data = dist.rvs(loc=location, scale=scale, skew=shape, size=1)[0]
+
+        simulation_data[j, i] = random_data
+
+# Calculate median flows and 99% CI
+median_flows = np.median(simulation_data, axis=1)
+confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
+
+# Plotting the median flows and 99% CI
+plt.figure(figsize=(20, 10))
+for dist_name in np.unique(closest_distributions):
+    indices = [i for i, x in enumerate(closest_distributions) if x == dist_name]
+    plt.scatter(np.array(indices) + 1, median_flows[indices], color=distribution_colors[dist_name], label=f'Median Flow ({dist_name})')
+
+plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
+
+# Adding transition lines for each distribution change
+prev_dist = closest_distributions[0]
+for i in range(1, num_windows):
+    current_dist = closest_distributions[i]
+    if current_dist != prev_dist:
+        plt.axvline(x=i + 1, color='black', linestyle='--', alpha=0.2)
+        prev_dist = current_dist
+
+# Adding the transition to projected data line
+plt.axvline(transition_window, color='black', linestyle='-', alpha=0.7, label='Transition to Projected Data')
+
+# Adding unique legends for distributions
+handles, labels = plt.gca().get_legend_handles_labels()
+by_label = dict(zip(labels, handles))
+plt.legend(by_label.values(), by_label.keys())
+
+plt.title('Median Flow with 99% Confidence Interval Using Best-Fit Distributions', fontsize=20)
+plt.xlabel('Time Window', fontsize=18)
+plt.ylabel('Flow (m³/s)', fontsize=18)
+plt.grid(True)
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/flow_simulation.png", bbox_inches='tight')
+plt.show()
+
+# Store the transition window
+transition_window = overlap_length
+print(f'Transition to projected data occurs at window: {transition_window}')
+
+
+# In[74]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genextreme as gev
+from scipy.stats import genlogistic as glo
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
+from scipy.stats import t
+
+# Function to load the parameters
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GLO, GEV, GNO, and PE3 distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+
+# Initialize arrays to store simulation results
+num_windows = len(closest_distributions)
+exceedance_probabilities = np.zeros(num_windows)
+
+# Function to calculate exceedance probability
+def calculate_exceedance_probability(dist, loc, scale, shape, num_data_points, threshold, low_flow):
+    exceedances = 0
+    for _ in range(num_simulations):
+        random_data = -1  # Initialize with a negative value to enter the while loop
+        while np.any(random_data < 0):
+            random_data = dist.rvs(c=shape, loc=loc, scale=scale, size=num_data_points) if dist in [gev, gno, glo] else dist.rvs(loc=loc, scale=scale, skew=shape, size=num_data_points)
+        random_data = np.maximum(0, random_data)  # Ensure non-negative values
+        if low_flow == "On":
+            exceedances += np.sum(random_data < threshold)
+        else:
+            exceedances += np.sum(random_data > threshold)
+    exceedance_probability = exceedances / (num_data_points * num_simulations)
+    return exceedance_probability
+
+# Simulate flows and calculate exceedance probabilities for each window
+for j in range(num_windows):
+    dist_name = closest_distributions[j]
+    if dist_name == 'GEV':
+        params = params_gev.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], -params['Shape']
+        dist = gev
+    elif dist_name == 'GLO':
+        params = params_glo.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], -params['Shape']
+        dist = glo
+    elif dist_name == 'GNO':
+        params = params_gno.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = gno
+    elif dist_name == 'PE3':
+        params = params_pe3.loc[j, ['Location', 'Scale', 'Shape']]
+        location, scale, shape = params['Location'], params['Scale'], params['Shape']
+        dist = pe3
+
+    # Calculate exceedance probability for the current window
+    exceedance_probabilities[j] = calculate_exceedance_probability(dist, location, scale, shape, num_data_points, threshold, low_flow)
+
+# Calculate cumulative exceedance probability
+cumulative_probabilities = []
+cumulative = 1.0
+for p in exceedance_probabilities:
+    cumulative *= (1 - p)
+    cumulative_probabilities.append(1 - cumulative)
+cumulative_probabilities = np.array(cumulative_probabilities)
+
+# Calculate the 99% confidence interval for the exceedance probabilities
+confidence_level = 0.99
+degrees_of_freedom = num_simulations - 1
+standard_error = np.std(exceedance_probabilities) / np.sqrt(num_simulations)
+t_value = t.ppf((1 + confidence_level) / 2, degrees_of_freedom)
+margin_of_error = t_value * standard_error
+lower_bound = exceedance_probabilities - margin_of_error
+upper_bound = exceedance_probabilities + margin_of_error
+
+# Plotting the exceedance probabilities and cumulative probabilities with secondary y-axis
+fig, ax1 = plt.subplots(figsize=(20, 10))
+
+# Plotting the exceedance probabilities with confidence intervals on the primary y-axis
+ax1.plot(range(1, num_windows + 1), exceedance_probabilities, label='modelled Exceedance Probability', marker='x', color='blue')
+ax1.fill_between(range(1, num_windows + 1), lower_bound, upper_bound, alpha=0.2, color='blue', label='99% Confidence Interval')
+ax1.axvline(x=transition_window, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+ax1.set_xlabel('Time Window')
+ax1.set_ylabel('Exceedance Probability')
+ax1.legend(loc='upper left')
+ax1.grid(True)
+
+# Create a secondary y-axis for cumulative probabilities
+ax2 = ax1.twinx()
+ax2.plot(range(1, num_windows + 1), cumulative_probabilities, label='modelled Cumulative Probability', linestyle='--', color='purple')
+ax2.set_ylabel('Cumulative Exceedance Probability')
+ax2.legend(loc='upper right')
+
+# Adding transition lines for each distribution change
+prev_dist = closest_distributions[0]
+for i in range(1, num_windows):
+    current_dist = closest_distributions[i]
+    if current_dist != prev_dist:
+        plt.axvline(x=i + 1, color='black', linestyle='--', alpha=0.2)
+        prev_dist = current_dist
+
+# Adding unique legends for distributions
+handles, labels = plt.gca().get_legend_handles_labels()
+by_label = dict(zip(labels, handles))
+plt.legend(by_label.values(), by_label.keys())
+
+plt.title('Exceedance Probability and Cumulative Probability Over Time', fontsize=20)
+ax1.set_xlabel('Time Window', fontsize=18)
+ax1.set_ylabel('Exceedance Probability', fontsize=18)
+ax2.set_ylabel('Cumulative Exceedance Probability', fontsize=18)
+plt.grid(True)
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/exceedance_probabilities.png", bbox_inches='tight')
+plt.show()
+
+# Store the transition window
+transition_window = overlap_length
+print(f'Transition to projected data occurs at window: {transition_window}')
+
+
+# In[75]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genlogistic as glo
+from scipy.stats import genextreme as gev
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
+from scipy.stats import genpareto as gpa
+
+# Load the GLO, GEV, GNO, PE3, and GPA parameters from CSV files
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GLO, GEV, GNO, PE3, and GPA distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+params_gpa = load_parameters(desired_dir, 'GPA_parameters.csv')
+
+# Use the transition window defined earlier
+transition_window = overlap_length
+
+# Determine the majority distribution before and after the transition
+pre_transition_dist = max(set(closest_distributions[:transition_window]), key=closest_distributions[:transition_window].count)
+post_transition_dist = max(set(closest_distributions[transition_window:]), key=closest_distributions[transition_window:].count)
+
+# Calculate the percentage of each period
+pre_transition_percentage = (closest_distributions[:transition_window].count(pre_transition_dist) / transition_window) * 100
+post_transition_percentage = (closest_distributions[transition_window:].count(post_transition_dist) / (len(closest_distributions) - transition_window)) * 100
+
+# Determine the majority distribution before and after the transition
+pre_transition_dist = max(set(closest_distributions[:transition_window]), key=closest_distributions[:transition_window].count)
+post_transition_dist = max(set(closest_distributions[transition_window:]), key=closest_distributions[transition_window:].count)
+
+# Initialize arrays to store simulation results
+num_windows = len(closest_distributions)
+simulation_data = np.zeros((num_windows, num_simulations))
+
+# Define the function to get distribution parameters
+def get_distribution_params(dist_name, params, j):
+    if dist_name == 'GEV':
+        location, scale, shape = params.loc[j, ['Location', 'Scale', 'Shape']]
+        shape = -shape
+        dist = gev
+    elif dist_name == 'GLO':
+        location, scale, shape = params.loc[j, ['Location', 'Scale', 'Shape']]
+        shape = -shape
+        dist = glo
+    elif dist_name == 'GNO':
+        location, scale, shape = params.loc[j, ['Location', 'Scale', 'Shape']]
+        dist = gno
+    elif dist_name == 'PE3':
+        location, scale, shape = params.loc[j, ['Location', 'Scale', 'Shape']]
+        dist = pe3
+    elif dist_name == 'GPA':
+        location, scale, shape = params.loc[j, ['Location', 'Scale', 'Shape']]
+        dist = gpa
+    else:
+        raise ValueError(f"Unknown distribution name: {dist_name}")
+    return location, scale, shape, dist
+
+# Simulate flows using the majority distribution for each segment
+for j in range(num_windows):
+    if j < transition_window:
+        dist_name = pre_transition_dist
+        if dist_name == 'GEV':
+            params = params_gev
+        elif dist_name == 'GLO':
+            params = params_glo
+        elif dist_name == 'GNO':
+            params = params_gno
+        elif dist_name == 'PE3':
+            params = params_pe3
+        elif dist_name == 'GPA':
+            params = params_gpa
+    else:
+        dist_name = post_transition_dist
+        if dist_name == 'GEV':
+            params = params_gev
+        elif dist_name == 'GLO':
+            params = params_glo
+        elif dist_name == 'GNO':
+            params = params_gno
+        elif dist_name == 'PE3':
+            params = params_pe3
+        elif dist_name == 'GPA':
+            params = params_gpa
+
+    location, scale, shape, dist = get_distribution_params(dist_name, params, j)
+
+    # Validate parameters
+    if scale <= 0:
+        raise ValueError(f"Invalid scale parameter at window {j}: {scale} must be positive.")
+
+    for i in range(num_simulations):
+        random_data = dist.rvs(shape, loc=location, scale=scale, size=1)[0] if dist_name in ['GEV', 'GLO', 'GNO', 'GPA'] else dist.rvs(loc=location, scale=scale, skew=shape, size=1)[0]
+
+        # Ensure generated value is >= 0
+        while random_data < 0:
+            random_data = dist.rvs(shape, loc=location, scale=scale, size=1)[0] if dist_name in ['GEV', 'GLO', 'GNO', 'GPA'] else dist.rvs(loc=location, scale=scale, skew=shape, size=1)[0]
+
+        simulation_data[j, i] = random_data
+
+# Calculate median flows and 99% CI
+median_flows = np.median(simulation_data, axis=1)
+confidence_interval = np.percentile(simulation_data, [0.5, 99.5], axis=1)
+
+# Plotting the median flows and 99% CI
+plt.figure(figsize=(20, 10))
+plt.plot(range(1, num_windows + 1), median_flows, color='b', label='Median Flow')
+plt.fill_between(range(1, num_windows + 1), confidence_interval[0], confidence_interval[1], color='gray', alpha=0.3, label='99% CI')
+
+# Adding the transition to projected data line
+plt.axvline(transition_window, color='black', linestyle='-', alpha=0.7, label='Transition to Projected Data')
+
+# Adding distribution segments text
+plt.text(transition_window/2, max(median_flows) + 0.05 * max(median_flows), f'Most Common PD: {pre_transition_dist}', horizontalalignment='center', verticalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+plt.text(transition_window + (num_windows - transition_window)/2, max(median_flows) + 0.05 * max(median_flows), f'Most Common PD: {post_transition_dist}', horizontalalignment='center', verticalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+
+plt.title('Median Flow with 99% Confidence Interval Using Majority-Fit Distributions', fontsize=20)
+plt.xlabel('Time Window', fontsize=18)
+plt.ylabel('Flow (m³/s)', fontsize=18)
 plt.legend()
 plt.grid(True)
 
 # Save the plot as an image
-plt.savefig(f"{desired_dir}/gpa_flow.png", bbox_inches='tight')
+plt.savefig(f"{desired_dir}/flow_simulation.png", bbox_inches='tight')
 plt.show()
+
+
+# Store the transition window
+print(f'Transition to projected data occurs at window: {transition_window}')
+print(f'Most Common PD pre-transition: {pre_transition_dist} ({pre_transition_percentage:.1f}%)')
+print(f'Most Common PD post-transition: {post_transition_dist} ({post_transition_percentage:.1f}%)')
+
+
+# In[68]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genlogistic as glo
+from scipy.stats import genextreme as gev
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
+from scipy.stats import genpareto as gpa
+
+# Load the GLO, GEV, GNO, PE3, and GPA parameters from CSV files
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GLO, GEV, GNO, PE3, and GPA distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+params_gpa = load_parameters(desired_dir, 'GPA_parameters.csv')
+
+# Determine the majority distribution before and after the transition
+pre_transition_dist = max(set(closest_distributions[:transition_window]), key=closest_distributions[:transition_window].count)
+post_transition_dist = max(set(closest_distributions[transition_window:]), key=closest_distributions[transition_window:].count)
+
+# Calculate the percentage of each period
+pre_transition_percentage = (closest_distributions[:transition_window].count(pre_transition_dist) / transition_window) * 100
+post_transition_percentage = (closest_distributions[transition_window:].count(post_transition_dist) / (len(closest_distributions) - transition_window)) * 100
+
+# Function to get parameters based on distribution name
+def get_parameters(dist_name, params_df, start, end):
+    if dist_name == 'GEV':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], -params_df['Shape'][start:end]
+    elif dist_name == 'GLO':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], -params_df['Shape'][start:end]
+    elif dist_name == 'GNO':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], params_df['Shape'][start:end]
+    elif dist_name == 'PE3':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], params_df['Shape'][start:end]
+    elif dist_name == 'GPA':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], params_df['Shape'][start:end]
+
+# Get parameters for pre-transition period
+if pre_transition_dist == 'GEV':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_gev, 0, transition_window)
+elif pre_transition_dist == 'GLO':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_glo, 0, transition_window)
+elif pre_transition_dist == 'GNO':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_gno, 0, transition_window)
+elif pre_transition_dist == 'PE3':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_pe3, 0, transition_window)
+elif pre_transition_dist == 'GPA':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_gpa, 0, transition_window)
+
+# Get parameters for post-transition period
+if post_transition_dist == 'GEV':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_gev, transition_window, len(params_gev))
+elif post_transition_dist == 'GLO':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_glo, transition_window, len(params_glo))
+elif post_transition_dist == 'GNO':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_gno, transition_window, len(params_gno))
+elif post_transition_dist == 'PE3':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_pe3, transition_window, len(params_pe3))
+elif post_transition_dist == 'GPA':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_gpa, transition_window, len(params_gpa))
+
+# Combine pre and post parameters
+loc_array = np.concatenate((loc_array_pre, loc_array_post))
+scale_array = np.concatenate((scale_array_pre, scale_array_post))
+shape_array = np.concatenate((shape_array_pre, shape_array_post))
+
+# Plotting the parameters
+fig, axs = plt.subplots(3, 1, figsize=(20, 15))
+
+# Plot location parameters
+axs[0].plot(range(1, len(loc_array) + 1), loc_array, marker='x', linestyle='-', color='b')
+axs[0].axvline(transition_window, color='gray', linestyle='--', label='Transition to Projected Data')
+axs[0].set_title('Location Parameter')
+axs[0].set_xlabel('Time Window')
+axs[0].set_ylabel('Location')
+axs[0].legend()
+
+# Plot scale parameters
+axs[1].plot(range(1, len(scale_array) + 1), scale_array, marker='x', linestyle='-', color='b')
+axs[1].axvline(transition_window, color='gray', linestyle='--', label='Transition to Projected Data')
+axs[1].set_title('Scale Parameter')
+axs[1].set_xlabel('Time Window')
+axs[1].set_ylabel('Scale')
+axs[1].legend()
+
+# Plot shape parameters
+# Invert shape parameters for GEV and GLO for correct plotting
+shape_array_plot = -shape_array if pre_transition_dist in ['GEV', 'GLO'] else shape_array
+axs[2].plot(range(1, len(shape_array_plot) + 1), shape_array_plot, marker='x', linestyle='-', color='b')
+axs[2].axvline(transition_window, color='gray', linestyle='--', label='Transition to Projected Data')
+axs[2].set_title('Shape Parameter')
+axs[2].set_xlabel('Time Window')
+axs[2].set_ylabel('Shape')
+axs[2].legend()
+
+# Adding distribution segments text
+axs[0].text(transition_window/2, max(loc_array) + 0.1 * max(loc_array), f'Most Common PD: {pre_transition_dist} ({pre_transition_percentage:.1f}%)', horizontalalignment='center', verticalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+axs[0].text(transition_window + (len(loc_array) - transition_window)/2, max(loc_array) + 0.1 * max(loc_array), f'Most Common PD: {post_transition_dist} ({post_transition_percentage:.1f}%)', horizontalalignment='center', verticalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+
+# Adjust spacing between subplots
+plt.tight_layout()
+
+# Save the plot as an image
+plt.savefig(f"{desired_dir}/parameter_distribution.png", bbox_inches='tight')
+plt.show()
+
+# Store the transition window
+transition_window = overlap_length
+print(f'Transition to projected data occurs at window: {transition_window}')
+print(f'Most Common PD pre-transition: {pre_transition_dist} ({pre_transition_percentage:.1f}%)')
+print(f'Most Common PD post-transition: {post_transition_dist} ({post_transition_percentage:.1f}%)')
+
+
+# In[ ]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import genextreme as gev
+from scipy.stats import genlogistic as glo
+from scipy.stats import genpareto as gno
+from scipy.stats import pearson3 as pe3
+from scipy.stats import t
+
+# Function to load the parameters
+def load_parameters(working_dir, file_name):
+    file_path = f"{working_dir}/{file_name}"
+    return pd.read_csv(file_path)
+
+# Set the working directory
+desired_dir = r"C:\Users\Local Admin\OneDrive - Lower Kootenay Band\Documents\workspace_python"
+
+# Load parameters for GLO, GEV, GNO, and PE3 distributions
+params_glo = load_parameters(desired_dir, 'GLO_parameters.csv')
+params_gev = load_parameters(desired_dir, 'GEV_parameters.csv')
+params_gno = load_parameters(desired_dir, 'GNO_parameters.csv')
+params_pe3 = load_parameters(desired_dir, 'PE3_parameters.csv')
+
+# Determine the majority distribution before and after the transition
+pre_transition_dist = max(set(closest_distributions[:transition_window]), key=closest_distributions[:transition_window].count)
+post_transition_dist = max(set(closest_distributions[transition_window:]), key=closest_distributions[transition_window:].count)
+
+# Calculate the percentage of each period
+pre_transition_percentage = (closest_distributions[:transition_window].count(pre_transition_dist) / transition_window) * 100
+post_transition_percentage = (closest_distributions[transition_window:].count(post_transition_dist) / (len(closest_distributions) - transition_window)) * 100
+
+# Function to get parameters based on distribution name
+def get_parameters(dist_name, params_df, start, end):
+    if dist_name == 'GEV':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], -params_df['Shape'][start:end]
+    elif dist_name == 'GLO':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], -params_df['Shape'][start:end]
+    elif dist_name == 'GNO':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], params_df['Shape'][start:end]
+    elif dist_name == 'PE3':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], params_df['Shape'][start:end]
+    elif dist_name == 'GPA':
+        return params_df['Location'][start:end], params_df['Scale'][start:end], params_df['Shape'][start:end]
+
+# Get parameters for pre-transition period
+if pre_transition_dist == 'GEV':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_gev, 0, transition_window)
+elif pre_transition_dist == 'GLO':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_glo, 0, transition_window)
+elif pre_transition_dist == 'GNO':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_gno, 0, transition_window)
+elif pre_transition_dist == 'PE3':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_pe3, 0, transition_window)
+elif pre_transition_dist == 'GPA':
+    loc_array_pre, scale_array_pre, shape_array_pre = get_parameters(pre_transition_dist, params_gpa, 0, transition_window)
+
+# Get parameters for post-transition period
+if post_transition_dist == 'GEV':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_gev, transition_window, len(params_gev))
+elif post_transition_dist == 'GLO':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_glo, transition_window, len(params_glo))
+elif post_transition_dist == 'GNO':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_gno, transition_window, len(params_gno))
+elif post_transition_dist == 'PE3':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_pe3, transition_window, len(params_pe3))
+elif post_transition_dist == 'GPA':
+    loc_array_post, scale_array_post, shape_array_post = get_parameters(post_transition_dist, params_gpa, transition_window, len(params_gpa))
+
+# Function to calculate exceedance probability
+def calculate_exceedance_probability(dist_name, loc_array, scale_array, shape_array, num_data_points, num_simulations, threshold, low_flow):
+    num_windows = len(loc_array)
+    exceedances = np.zeros(num_windows, dtype=int)
+
+    for i in range(num_windows):
+        for _ in range(num_simulations):
+            random_data = -1  # Initialize with a negative value to enter the while loop
+            while np.any(random_data < 0):
+                if dist_name == 'GEV':
+                    random_data = gev.rvs(c=shape_array.iloc[i], loc=loc_array.iloc[i], scale=scale_array.iloc[i], size=num_data_points)
+                elif dist_name == 'GLO':
+                    random_data = glo.rvs(c=shape_array.iloc[i], loc=loc_array.iloc[i], scale=scale_array.iloc[i], size=num_data_points)
+                elif dist_name == 'GNO':
+                    random_data = gno.rvs(c=shape_array.iloc[i], loc=loc_array.iloc[i], scale=scale_array.iloc[i], size=num_data_points)
+                elif dist_name == 'PE3':
+                    random_data = pe3.rvs(skew=shape_array.iloc[i], loc=loc_array.iloc[i], scale=scale_array.iloc[i], size=num_data_points)
+                elif dist_name == 'GPA':
+                    random_data = gpa.rvs(c=shape_array.iloc[i], loc=loc_array.iloc[i], scale=scale_array.iloc[i], size=num_data_points)
+            
+            random_data = np.maximum(0, random_data)  # Ensure non-negative values
+
+            if low_flow == "On":
+                exceedances[i] += np.sum((random_data - total_useage) < threshold)
+            else:
+                exceedances[i] += np.sum(random_data > threshold)
+
+    exceedance_probability = exceedances / (num_data_points * num_simulations)
+    return exceedance_probability
+
+# Function to calculate cumulative exceedance probability
+def calculate_cumulative_probability(probabilities):
+    cumulative_probabilities = []
+    cumulative = 1.0
+    for p in probabilities:
+        cumulative *= (1 - p)
+        cumulative_probabilities.append(1 - cumulative)
+    return np.array(cumulative_probabilities)
+
+# Simulate using the majority distribution for the pre-transition period
+exceedance_probability_pre = calculate_exceedance_probability(pre_transition_dist, loc_array_pre, scale_array_pre, shape_array_pre, num_data_points, num_simulations, threshold, low_flow)
+
+# Simulate using the majority distribution for the post-transition period
+exceedance_probability_post = calculate_exceedance_probability(post_transition_dist, loc_array_post, scale_array_post, shape_array_post, num_data_points, num_simulations, threshold, low_flow)
+
+# Combine the exceedance probabilities
+exceedance_probability = np.concatenate((exceedance_probability_pre, exceedance_probability_post))
+
+# Calculate cumulative exceedance probability for combined data
+cumulative_probability = calculate_cumulative_probability(exceedance_probability)
+
+# Calculate the 99% confidence interval for the combined exceedance probability
+confidence_level = 0.99
+degrees_of_freedom = num_simulations - 1
+standard_error = np.std(exceedance_probability) / np.sqrt(num_simulations)
+t_value = t.ppf((1 + confidence_level) / 2, degrees_of_freedom)
+margin_of_error = t_value * standard_error
+lower_bound = exceedance_probability - margin_of_error
+upper_bound = exceedance_probability + margin_of_error
+
+# Plotting the exceedance probabilities and cumulative probabilities with secondary y-axis
+fig, ax1 = plt.subplots(figsize=(20, 10))
+
+# Plotting the exceedance probabilities with confidence intervals on the primary y-axis
+ax1.plot(range(1, len(exceedance_probability) + 1), exceedance_probability, label='modelled Exceedance Probability', marker='x')
+ax1.fill_between(range(1, len(exceedance_probability) + 1), lower_bound, upper_bound, alpha=0.2, label='99% Confidence Interval')
+ax1.axvline(x=transition_window, color='gray', linestyle='--', label='Transition to Projected GCM Data')
+ax1.set_xlabel('Time Window')
+ax1.set_ylabel('Exceedance Probability')
+ax1.legend(loc='upper left')
+ax1.grid(True)
+
+# Create a secondary y-axis for cumulative probabilities
+ax2 = ax1.twinx()
+ax2.plot(range(1, len(exceedance_probability) + 1), cumulative_probability, label='modelled Cumulative Probability', linestyle='--', color='purple')
+ax2.set_ylabel('Cumulative Exceedance Probability')
+ax2.legend(loc='upper right')
+
+# Adding distribution segments text
+ax1.text(transition_window/2, max(exceedance_probability) + 0.1 * max(exceedance_probability), f'Most Common PD: {pre_transition_dist} ({pre_transition_percentage:.1f}%)', horizontalalignment='center', verticalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+ax1.text(transition_window + (len(exceedance_probability) - transition_window)/2, max(exceedance_probability) + 0.1 * max(exceedance_probability), f'Most Common PD: {post_transition_dist} ({post_transition_percentage:.1f}%)', horizontalalignment='center', verticalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+
+plt.title('Exceedance Probability and Cumulative Probability Over Time')
+plt.savefig('exceedance_prob.png')
+plt.show()
+
+# Store the transition window
+print(f'Transition to projected data occurs at window: {transition_window}')
+print(f'Most Common PD pre-transition: {pre_transition_dist} ({pre_transition_percentage:.1f}%)')
+print(f'Most Common PD post-transition: {post_transition_dist} ({post_transition_percentage:.1f}%)')
+
+
