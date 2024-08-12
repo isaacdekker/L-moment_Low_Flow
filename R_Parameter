@@ -1,0 +1,132 @@
+# Ensure required libraries are installed
+required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl", "lmom")
+
+install_if_missing <- function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  }
+}
+
+lapply(required_packages, install_if_missing)
+
+# Set the working directory
+desired_dir <- "C:\\Users\\Local Admin\\OneDrive - Lower Kootenay Band\\Documents\\workspace_python"
+setwd(desired_dir)
+
+# Verify the working directory
+current_dir <- getwd()
+print(paste("Current working directory:", current_dir))
+
+# Load the Excel file
+file_path <- file.path(current_dir, "L_moments_and_ratios.xlsx")
+print(paste("Excel file path:", file_path))
+
+# Check if the file exists
+if (!file.exists(file_path)) {
+  stop("The file 'L_moments_and_ratios.xlsx' does not exist in the specified directory.")
+}
+
+# Read the L-moments and L-moment ratios from the Excel file
+print("Reading L-moments and L-moment ratios from Excel file...")
+l_moments <- read_excel(file_path, sheet = "L-moments")
+l_moment_ratios <- read_excel(file_path, sheet = "L-moment ratios")
+
+print("L-moments head:")
+print(head(l_moments))
+print("L-moment ratios head:")
+print(head(l_moment_ratios))
+
+# Initialize vectors to store distribution parameters
+params_list <- list(
+  GEV = data.frame(Window = integer(), location = numeric(), scale = numeric(), shape = numeric()),
+  GLO = data.frame(Window = integer(), location = numeric(), scale = numeric(), shape = numeric()),
+  PE3 = data.frame(Window = integer(), location = numeric(), scale = numeric(), shape = numeric()),
+  GPA = data.frame(Window = integer(), location = numeric(), scale = numeric(), shape = numeric()),
+  GNO = data.frame(Window = integer(), location = numeric(), scale = numeric(), shape = numeric())
+)
+
+# Compute distribution parameters for each window
+for (i in 1:nrow(l_moments)) {
+  sl1 <- l_moments$sl1[i]
+  sl2 <- l_moments$sl2[i]
+  st3 <- l_moment_ratios$st3[i]
+  st4 <- l_moment_ratios$st4[i]
+  
+  # Generalized Extreme Value (GEV) distribution
+  params_gev <- fit_gev(sl1, sl2, st3)
+  params_list$GEV <- rbind(params_list$GEV, data.frame(Window = i, location = params_gev[1], scale = params_gev[2], shape = params_gev[3]))
+  
+  # Generalized Logistic (GLO) distribution
+  params_glo <- fit_glo(sl1, sl2, st3, st4)
+  params_list$GLO <- rbind(params_list$GLO, data.frame(Window = i, location = params_glo[1], scale = params_glo[2], shape = params_glo[3]))
+  
+  # Pearson Type III (PE3) distribution
+  params_pe3 <- fit_pe3(sl1, sl2, st3, st4)
+  params_list$PE3 <- rbind(params_list$PE3, data.frame(Window = i, location = params_pe3[1], scale = params_pe3[2], shape = params_pe3[3]))
+  
+  # Generalized Pareto (GPA) distribution
+  params_gpa <- fit_gpa(sl1, sl2, st3, st4)
+  params_list$GPA <- rbind(params_list$GPA, data.frame(Window = i, location = params_gpa[1], scale = params_gpa[2], shape = params_gpa[3]))
+  
+  # Generalized Normal (GNO) distribution
+  params_gno <- fit_gno(sl1, sl2, st3, st4)
+  params_list$GNO <- rbind(params_list$GNO, data.frame(Window = i, location = params_gno[1], scale = params_gno[2], shape = params_gno[3]))
+}
+
+# Verify the structure of the data frames and column names
+print("GEV parameters head:")
+print(head(params_list$GEV))
+print("Column names of GEV parameters:")
+print(colnames(params_list$GEV))
+
+print("GLO parameters head:")
+print(head(params_list$GLO))
+print("Column names of GLO parameters:")
+print(colnames(params_list$GLO))
+
+# Save the distribution parameters to CSV and Excel files
+for (dist_name in names(params_list)) {
+  params_df <- params_list[[dist_name]]
+  
+  # Save to CSV
+  output_file_csv <- file.path(current_dir, paste(dist_name, "_parameters.csv", sep = ""))
+  write.csv(params_df, output_file_csv, row.names = FALSE)
+  print(paste("CSV file saved to:", output_file_csv))
+  
+  # Save to Excel
+  output_file_xlsx <- file.path(current_dir, paste(dist_name, "_parameters.xlsx", sep = ""))
+  write_xlsx(params_df, output_file_xlsx)
+  print(paste("Excel file saved to:", output_file_xlsx))
+  
+  # Plot the parameters and check column names before plotting
+  print(paste("Plotting", dist_name, "parameters..."))
+  print(paste("Column names of", dist_name, "parameters:"))
+  print(colnames(params_df))
+  
+  plot_location <- ggplot(params_df, aes(x = Window, y = location)) +
+    geom_line(color = "blue") +
+    labs(title = paste(dist_name, "Location Parameter Across Windows"),
+         x = "Window",
+         y = "Location") +
+    theme_minimal()
+  
+  plot_scale <- ggplot(params_df, aes(x = Window, y = scale)) +
+    geom_line(color = "red") +
+    labs(title = paste(dist_name, "Scale Parameter Across Windows"),
+         x = "Window",
+         y = "Scale") +
+    theme_minimal()
+  
+  plot_shape <- ggplot(params_df, aes(x = Window, y = shape)) +
+    geom_line(color = "green") +
+    labs(title = paste(dist_name, "Shape Parameter Across Windows"),
+         x = "Window",
+         y = "Shape") +
+    theme_minimal()
+  
+  # Save the plots
+  ggsave(file.path(current_dir, paste(dist_name, "_Location_Parameter.png", sep = "")), plot = plot_location)
+  ggsave(file.path(current_dir, paste(dist_name, "_Scale_Parameter.png", sep = "")), plot = plot_scale)
+  ggsave(file.path(current_dir, paste(dist_name, "_Shape_Parameter.png", sep = "")), plot = plot_shape)
+}
