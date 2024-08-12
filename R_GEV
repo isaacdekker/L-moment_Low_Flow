@@ -1,0 +1,93 @@
+# Load necessary libraries
+library(lmomco)   # For L-moment computations and distribution fitting
+library(ggplot2)  # For plotting
+
+# Optionally, if you handle CSV files or need additional utilities, ensure these are loaded:
+library(readr)    # For more advanced CSV handling (not strictly necessary since you're using read.csv)
+library(dplyr)    # For data manipulation (if needed, but not in your current script)
+library(tidyr)    # For tidying data (again, not strictly necessary but useful)
+
+# Define the threshold and transition window for the plot
+threshold_value <- 1.0  # Adjust as needed
+transition_window <- 61  # Adjust as needed
+
+# Set the working directory
+desired_dir <- "C:/Users/Local Admin/OneDrive - Lower Kootenay Band/Documents/workspace_python"
+
+# Path to the CSV file
+csv_file_path <- file.path(desired_dir, "GEV_parameters.csv")
+
+# Load the GEV parameters from the CSV file using base R's read.csv
+gev_params <- read.csv(csv_file_path)
+
+# Preview the loaded data
+print(head(gev_params))
+
+# Ensure the CSV has the correct columns: Window, location, scale, shape
+if (!all(c("Window", "location", "scale", "shape") %in% colnames(gev_params))) {
+  stop("CSV file must contain columns: Window, location, scale, shape")
+}
+
+# Number of simulations
+num_simulations <- 1000
+
+# Initialize a list to store simulated flows
+simulated_flows <- list()
+
+# Loop over each row in the GEV parameters to generate simulated flows
+for (i in 1:nrow(gev_params)) {
+  # Extract the parameters for the current window
+  shape <- gev_params$shape[i]
+  loc <- gev_params$location[i]
+  scale <- gev_params$scale[i]
+  
+  # Define the GEV distribution parameters in the format required by lmomco
+  params <- vec2par(c(loc, scale, shape), type = "gev")
+  
+  # Generate simulated flows based on the fitted GEV distribution
+  simulated_data <- quagev(runif(num_simulations), para = params)
+  
+  # Store the simulated data along with the corresponding window
+  simulated_flows[[i]] <- data.frame(Window = gev_params$Window[i], Flow = simulated_data)
+}
+
+# Combine all simulated flows into a single data frame
+simulated_flows_df <- do.call(rbind, simulated_flows)
+
+# Calculate the median and 99% confidence intervals for each window
+summary_stats <- aggregate(Flow ~ Window, data = simulated_flows_df, 
+                           FUN = function(x) c(Median = median(x), 
+                                               CI_lower = quantile(x, 0.005), 
+                                               CI_upper = quantile(x, 0.995)))
+# Convert summary_stats to a data frame with separate columns for median and CIs
+summary_stats <- do.call(data.frame, summary_stats)
+
+# Rename the columns for clarity
+colnames(summary_stats) <- c("Window", "Median", "CI_lower", "CI_upper")
+
+
+# Plot the results
+plot <- ggplot(summary_stats, aes(x = Window)) +
+  geom_line(aes(y = Median), color = "blue") +
+  geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper), color = "darkred", width = 0.5, alpha = 0.8) +  # Darker red CI lines
+  geom_hline(aes(yintercept = threshold_value, color = "Exceedance over threshold"), linetype = "dashed") +  # Exceedance line
+  geom_vline(aes(xintercept = transition_window, color = "Transition to Projected GCM Data"), linetype = "solid", size = 0.75, alpha = 0.5) +  # Transition line
+  labs(title = "Simulated Flows with Median and 99% Confidence Intervals",
+       x = "Time Window", y = expression("Flow (m"^3*"/s)"),
+       color = "Legend") +
+  theme_minimal() +
+  scale_color_manual(values = c("Exceedance over threshold" = "red", 
+                                "Transition to Projected GCM Data" = "black")) +  # Adjust the colors for the legend
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save the plot as a PNG file with a white background
+plot_file_path <- file.path(desired_dir, "simulated_flows_plot.png")
+ggsave(plot_file_path, plot = plot, width = 10, height = 6, units = "in", dpi = 300, bg = "white")
+
+# Save the simulated flows to a CSV file
+output_file_path <- file.path(desired_dir, "simulated_flows.csv")
+write.csv(simulated_flows_df, output_file_path, row.names = FALSE)
+
+cat("Simulated flows have been saved to:", output_file_path, "\n")
+cat("Plot has been saved as PNG to:", plot_file_path, "\n")
