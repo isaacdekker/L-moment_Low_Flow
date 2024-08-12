@@ -1,0 +1,133 @@
+# Ensure required libraries are installed
+required_packages <- c("LMoFit", "readxl", "ggplot2", "writexl", "lmom")
+
+install_if_missing <- function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  }
+}
+
+lapply(required_packages, install_if_missing)
+
+# Set the working directory
+desired_dir <- "C:\\Users\\Local Admin\\OneDrive - Lower Kootenay Band\\Documents\\workspace_python"
+setwd(desired_dir)
+
+# Verify the working directory
+current_dir <- getwd()
+print(paste("Current working directory:", current_dir))
+
+# Load the CSV file
+file_path <- file.path(current_dir, "observed_predicted_l_moments.csv")
+print(paste("CSV file path:", file_path))
+
+# Check if the file exists
+if (!file.exists(file_path)) {
+  stop("The file 'observed_predicted_l_moments.csv' does not exist in the specified directory.")
+}
+
+# Read the observed and predicted L-moments from the CSV file
+print("Reading observed and predicted L-moments from CSV file...")
+lmom_data <- read.csv(file_path)
+
+print("Observed and Predicted L-moments head:")
+print(head(lmom_data))
+
+# Initialize vectors to store GEV parameters for observed and predicted L-moments
+location_obs <- numeric(nrow(lmom_data))
+scale_obs <- numeric(nrow(lmom_data))
+shape_obs <- numeric(nrow(lmom_data))
+location_pred <- numeric(nrow(lmom_data))
+scale_pred <- numeric(nrow(lmom_data))
+shape_pred <- numeric(nrow(lmom_data))
+
+# Compute GEV parameters for each row (each window)
+for (i in 1:nrow(lmom_data)) {
+  # For observed L-moments
+  sl1_obs <- lmom_data$L.moment.1.Observed[i]
+  sl2_obs <- lmom_data$L.moment.2.Observed[i]
+  st3_obs <- lmom_data$L.moment.3.Observed[i]
+  
+  lmoments_obs <- c(sl1_obs, sl2_obs, st3_obs)
+  GEV_par_obs <- pelgev(lmoments_obs)
+  
+  location_obs[i] <- GEV_par_obs[1]
+  scale_obs[i] <- GEV_par_obs[2]
+  shape_obs[i] <- GEV_par_obs[3]
+  
+  # For predicted L-moments
+  sl1_pred <- lmom_data$L.moment.1.Predicted[i]
+  sl2_pred <- lmom_data$L.moment.2.Predicted[i]
+  st3_pred <- lmom_data$L.moment.3.Predicted[i]
+  
+  lmoments_pred <- c(sl1_pred, sl2_pred, st3_pred)
+  GEV_par_pred <- pelgev(lmoments_pred)
+  
+  location_pred[i] <- GEV_par_pred[1]
+  scale_pred[i] <- GEV_par_pred[2]
+  shape_pred[i] <- GEV_par_pred[3]
+}
+
+# Create a data frame with the GEV parameters
+gev_params_obs <- data.frame(
+  Window = 1:nrow(lmom_data),
+  Location = location_obs,
+  Scale = scale_obs,
+  Shape = shape_obs
+)
+
+gev_params_pred <- data.frame(
+  Window = 1:nrow(lmom_data),
+  Location = location_pred,
+  Scale = scale_pred,
+  Shape = shape_pred
+)
+
+print("Observed GEV Parameters Data Frame:")
+print(head(gev_params_obs))
+
+print("Predicted GEV Parameters Data Frame:")
+print(head(gev_params_pred))
+
+# Plot the Location parameter
+plot_location <- ggplot() +
+  geom_line(data = gev_params_obs, aes(x = Window, y = Location), color = "blue", linetype = "solid", size = 1) +
+  geom_line(data = gev_params_pred, aes(x = Window, y = Location), color = "red", linetype = "dashed", size = 1) +
+  labs(title = "GEV Location Parameter Across Windows",
+       x = "Window",
+       y = "Location") +
+  theme_minimal() +
+  theme(text = element_text(size = 16))
+
+# Save the Location parameter plot
+location_plot_file <- file.path(current_dir, "GEV_Location_Parameter.png")
+ggsave(location_plot_file, plot = plot_location)
+
+# Plot the Scale parameter
+plot_scale <- ggplot() +
+  geom_line(data = gev_params_obs, aes(x = Window, y = Scale), color = "blue", linetype = "solid", size = 1) +
+  geom_line(data = gev_params_pred, aes(x = Window, y = Scale), color = "red", linetype = "dashed", size = 1) +
+  labs(title = "GEV Scale Parameter Across Windows",
+       x = "Window",
+       y = "Scale") +
+  theme_minimal() +
+  theme(text = element_text(size = 16))
+
+# Save the Scale parameter plot
+scale_plot_file <- file.path(current_dir, "GEV_Scale_Parameter.png")
+ggsave(scale_plot_file, plot = plot_scale)
+
+# Plot the Shape parameter
+plot_shape <- ggplot() +
+  geom_line(data = gev_params_obs, aes(x = Window, y = Shape), color = "blue", linetype = "solid", size = 1) +
+  geom_line(data = gev_params_pred, aes(x = Window, y = Shape), color = "red", linetype = "dashed", size = 1) +
+  labs(title = "GEV Shape Parameter Across Windows",
+       x = "Window",
+       y = "Shape") +
+  theme_minimal() +
+  theme(text = element_text(size = 16))
+
+# Save the Shape parameter plot
+shape_plot_file <- file.path(current_dir, "GEV_Shape_Parameter.png")
+ggsave(shape_plot_file, plot = plot_shape)
