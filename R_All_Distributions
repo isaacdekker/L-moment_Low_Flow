@@ -1,0 +1,146 @@
+# Load necessary libraries
+library(lmomco)
+library(ggplot2)
+
+# Set the working directory
+desired_dir <- "C:/Users/Local Admin/OneDrive - Lower Kootenay Band/Documents/workspace_python"
+
+# Define the threshold for the plot
+threshold_value <- 1.0  # You can adjust this value as needed
+
+# Define the transition window for the plot
+transition_window <- 61  # You can adjust this value as needed
+
+# Path to the closest distributions file
+closest_distributions_file <- file.path(desired_dir, "closest_distributions.csv")
+
+# Load the closest distributions data
+closest_distributions <- read.csv(closest_distributions_file)
+
+# Verify column names and adjust if necessary
+if (!all(c("window", "distribution") %in% colnames(closest_distributions))) {
+  stop("CSV file must contain columns: window, distribution")
+}
+
+# List of corresponding distribution parameters CSV files
+files <- list(
+  GLO = "GLO_parameters.csv",
+  PE3 = "PE3_parameters.csv",
+  GEV = "GEV_parameters.csv",
+  GPA = "GPA_parameters.csv",
+  GNO = "GNO_parameters.csv"
+)
+
+# Function to process each distribution and calculate the 99% confidence interval and median
+process_distribution <- function(dist_type, params) {
+  # Number of simulations
+  num_simulations <- 1000
+  
+  # Initialize a list to store simulated flows, CIs, and median
+  ci_results <- list()
+  
+  # Loop over each row in the parameters to generate simulated flows
+  for (i in 1:nrow(params)) {
+    # Extract the parameters for the current window
+    shape <- params$shape[i]
+    loc <- params$location[i]
+    scale <- params$scale[i]
+    
+    # Convert the distribution type to lowercase for the vec2par function
+    dist_type_lower <- tolower(dist_type)
+    
+    # Define the distribution parameters in the format required by lmomco
+    para <- vec2par(c(loc, scale, shape), type = dist_type_lower)
+    
+    # Generate simulated flows based on the fitted distribution
+    simulated_data <- switch(dist_type_lower,
+                             glo = quaglo(runif(num_simulations), para = para),
+                             pe3 = quape3(runif(num_simulations), para = para),
+                             gev = quagev(runif(num_simulations), para = para),
+                             gpa = quagpa(runif(num_simulations), para = para),
+                             gno = quagno(runif(num_simulations), para = para))
+    
+    # Calculate the median and 99% confidence intervals (0.5th and 99.5th percentiles)
+    lower_bound <- quantile(simulated_data, 0.005)
+    upper_bound <- quantile(simulated_data, 0.995)
+    median_flow <- median(simulated_data)
+    
+    # Store the CIs, median, and window
+    ci_results[[i]] <- data.frame(Window = params$Window[i], 
+                                  Lower_99_CI = lower_bound, 
+                                  Upper_99_CI = upper_bound,
+                                  Median_Flow = median_flow)
+  }
+  
+  # Combine all CI results into a single data frame
+  ci_results_df <- do.call(rbind, ci_results)
+  ci_results_df$Distribution <- dist_type
+  
+  return(ci_results_df)
+}
+
+# Initialize an empty list to store all CI results
+all_ci_results <- list()
+
+# Loop through each window and process the corresponding best-fitting distribution
+for (i in 1:nrow(closest_distributions)) {
+  window <- closest_distributions$window[i]
+  dist_type <- closest_distributions$distribution[i]
+  
+  # Check if the distribution type exists in the files list
+  if (!dist_type %in% names(files)) {
+    stop(paste("Distribution type", dist_type, "not found in the files list."))
+  }
+  
+  # Load the corresponding distribution parameters
+  params_file <- files[[dist_type]]
+  params <- read.csv(file.path(desired_dir, params_file))
+  
+  # Filter the parameters for the current window
+  params <- params[params$Window == window, ]
+  
+  # Process the distribution and calculate the 99% CIs and median flows
+  ci_results <- process_distribution(dist_type, params)
+  
+  # Append the results to the list
+  all_ci_results[[i]] <- ci_results
+}
+
+# Combine all CI results into a single data frame
+combined_ci_results <- do.call(rbind, all_ci_results)
+
+# Save the 99% CI results to a CSV file
+output_file_path <- file.path(desired_dir, "99_percent_CI_results.csv")
+write.csv(combined_ci_results, output_file_path, row.names = FALSE)
+
+cat("99% confidence intervals have been saved to:", output_file_path, "\n")
+
+# Plot the 99% CIs and median flows without connecting them across windows, with a threshold line and a transition window
+plot <- ggplot(combined_ci_results, aes(x = Window, y = Median_Flow)) +
+  geom_point(aes(color = Distribution), size = 2) +
+  geom_errorbar(aes(ymin = Lower_99_CI, ymax = Upper_99_CI, color = Distribution), width = 0.5) +
+  geom_hline(aes(yintercept = threshold_value, color = "Exceedance over threshold"), linetype = "dashed") +  # Add the threshold line with a legend entry
+  geom_vline(aes(xintercept = transition_window, color = "Transition to Projected GCM Data"), 
+             linetype = "solid", size = 0.75, alpha = 0.5) +  # Thinner, semi-transparent solid black transition window line
+  labs(title = "Median Flows and 99% Confidence Intervals by Distribution",
+       x = "Time Window",
+       y = expression("Flow (m"^3*"/s)"),
+       color = "Legend") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(min(combined_ci_results$Window), max(combined_ci_results$Window), by = 10)) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_color_manual(values = c("Exceedance over threshold" = "red", 
+                                "Transition to Projected GCM Data" = "black",  # Solid black color, semi-transparent
+                                "GLO" = "blue", 
+                                "PE3" = "green", 
+                                "GEV" = "purple", 
+                                "GPA" = "orange", 
+                                "GNO" = "brown"))  # Adjust the colors for your distributions, threshold line, and transition window
+
+# Save the plot as a PNG file with a white background
+plot_file_path <- file.path(desired_dir, "Median_and_99CI_plot_discontinuous_errorbar.png")
+ggsave(plot_file_path, plot = plot, width = 14, height = 6.86, units = "in", dpi = 300, bg = "white")
+
+cat("Plot has been saved as PNG to:", plot_file_path, "\n")
